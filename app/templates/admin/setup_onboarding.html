@@ -1,0 +1,73 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Setup Onboarding — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Setup Onboarding: {{ user.name }}</h1>
+        <p class="lead">Create their onboarding journey</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card" style="max-width: 600px;">
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" name="start_date" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Department</label>
+                    <input type="text" class="form-control" name="department" placeholder="e.g. Engineering">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Position</label>
+                    <select class="form-select" name="position_id">
+                        <option value="">— Select —</option>
+                        {% for pos in positions %}
+                        <option value="{{ pos.id }}">{{ pos.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Manager</label>
+                    <select class="form-select" name="manager_id">
+                        <option value="">— Select —</option>
+                        {% for m in managers %}
+                        <option value="{{ m.id }}">{{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Onboarding Buddy</label>
+                    <select class="form-select" name="buddy_id">
+                        <option value="">— Select —</option>
+                        {% for u in all_users %}
+                        <option value="{{ u.id }}">{{ u.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="p-3 mb-4" style="background: #EBF5FB; border-radius: 8px; font-size: 0.9rem;">
+                    <i class="bi bi-info-circle" style="color: #3498DB;"></i>
+                    This will create 27 onboarding tasks based on PT's Pure Start system (pre-start through 90-day review)
+                    and change {{ user.name }}'s role to New Hire.
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-be">Setup Onboarding</button>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-be-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

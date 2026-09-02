@@ -1,0 +1,98 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Scorecard — {{ candidate.user.name }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Scorecard: {{ candidate.user.name }}</h1>
+        <p class="lead">{{ candidate.position.title }} &middot; {{ candidate.stage_display }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-clipboard-data"></i> Evaluation (1-5 Scale)</h3>
+        </div>
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <p style="color: #6C757D; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    Rate each dimension from 1 (Poor) to 5 (Exceptional). Based on PT's Applicant Grading System.
+                </p>
+
+                <div class="row g-4 mb-4">
+                    {% set dimensions = [
+                        ('communication', 'Communication', 'Verbal and written communication clarity, listening skills, presentation'),
+                        ('experience', 'Experience', 'Relevant work history, industry knowledge, track record'),
+                        ('niche_skills', 'Niche Skills', 'Role-specific technical skills, certifications, tools'),
+                        ('thinking', 'Thinking', 'Problem-solving, analytical thinking, strategic mindset'),
+                        ('emotional', 'Emotional Intelligence', 'Self-awareness, empathy, interpersonal skills, composure'),
+                        ('leadership', 'Leadership', 'Influence, ownership, initiative, team development potential'),
+                    ] %}
+
+                    {% for key, label, desc in dimensions %}
+                    <div class="col-md-6">
+                        <div style="background: #F8F9FA; border-radius: 8px; padding: 1rem;">
+                            <label class="form-label" for="{{ key }}"><strong>{{ label }}</strong></label>
+                            <p style="font-size: 0.8rem; color: #6C757D; margin-bottom: 0.5rem;">{{ desc }}</p>
+                            <div class="d-flex gap-2">
+                                {% for i in range(1, 6) %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="{{ key }}" id="{{ key }}_{{ i }}" value="{{ i }}" {% if i == 3 %}checked{% endif %}>
+                                    <label class="form-check-label" for="{{ key }}_{{ i }}">{{ i }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Recommendation -->
+                <div class="mb-4">
+                    <label class="form-label"><strong>Recommendation</strong></label>
+                    <div class="d-flex gap-3 flex-wrap">
+                        {% for val, label in [('strong_yes', 'Strong Yes'), ('yes', 'Yes'), ('neutral', 'Neutral'), ('no', 'No'), ('strong_no', 'Strong No')] %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="recommendation" id="rec_{{ val }}" value="{{ val }}" {% if val == 'neutral' %}checked{% endif %}>
+                            <label class="form-check-label" for="rec_{{ val }}">{{ label }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Bar Raiser -->
+                <div class="mb-4" style="background: #FEF9E7; border-radius: 8px; padding: 1rem;">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="bar_raiser" id="bar_raiser">
+                        <label class="form-check-label" for="bar_raiser"><strong>This is a Bar Raiser evaluation</strong></label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="bar_raiser_veto" id="bar_raiser_veto">
+                        <label class="form-check-label" for="bar_raiser_veto" style="color: #E74C3C;"><strong>Bar Raiser VETO</strong> (absolute — overrides all other scores)</label>
+                    </div>
+                </div>
+
+                <!-- Comments -->
+                <div class="mb-4">
+                    <label class="form-label" for="comments"><strong>Comments</strong></label>
+                    <textarea class="form-control" id="comments" name="comments" rows="4"
+                              placeholder="What stood out? Concerns? Specific examples?"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-be">Submit Scorecard</button>
+                    <a href="{{ url_for('manager.candidate_detail', candidate_id=candidate.id) }}" class="btn btn-be-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Brilliance Engine — Pure Technology{% endblock %}
+
+{% block content %}
+<div class="landing-hero">
+    <div class="landing-content">
+        <div class="landing-logo">Brilliance Engine</div>
+        <div class="landing-tagline">Where people actualize their brilliance</div>
+        <div class="landing-company">Pure Technology</div>
+
+        <div class="landing-cards">
+            <a href="{{ url_for('auth.login', role='candidate') }}" class="landing-card">
+                <div class="landing-card-icon"><i class="bi bi-person-plus"></i></div>
+                <div class="landing-card-title">I'm a Candidate</div>
+                <div class="landing-card-desc">Apply for a position, track your progress, and get to know us</div>
+            </a>
+
+            <a href="{{ url_for('auth.login', role='newhire') }}" class="landing-card">
+                <div class="landing-card-icon"><i class="bi bi-rocket-takeoff"></i></div>
+                <div class="landing-card-title">I'm a New Hire</div>
+                <div class="landing-card-desc">Welcome aboard — your onboarding journey starts here</div>
+            </a>
+
+            <a href="{{ url_for('auth.login', role='manager') }}" class="landing-card">
+                <div class="landing-card-icon"><i class="bi bi-people"></i></div>
+                <div class="landing-card-title">Hiring Manager</div>
+                <div class="landing-card-desc">Manage your pipeline, score candidates, and build your team</div>
+            </a>
+
+            <a href="{{ url_for('auth.login', role='admin') }}" class="landing-card">
+                <div class="landing-card-icon"><i class="bi bi-gear"></i></div>
+                <div class="landing-card-title">HR Admin</div>
+                <div class="landing-card-desc">Full system access — the engine room</div>
+            </a>
+        </div>
+
+        <div style="margin-top: 3rem; color: rgba(255,255,255,0.3); font-size: 0.8rem;">
+            "We don't hire people that are good enough to work here.<br>
+            We hire people we believe will actualize their brilliance."
+            <div style="margin-top: 0.25rem; color: var(--gold); opacity: 0.5;">— Jared Sanborn, CEO</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

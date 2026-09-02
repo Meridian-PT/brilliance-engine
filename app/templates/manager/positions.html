@@ -1,0 +1,58 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Positions — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Positions</h1>
+        <p class="lead">Manage your open roles</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            {% if positions %}
+            <table class="table table-be mb-0">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Department</th>
+                        <th>Location</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Candidates</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pos in positions %}
+                    <tr>
+                        <td><strong>{{ pos.title }}</strong></td>
+                        <td>{{ pos.department or '—' }}</td>
+                        <td>{{ pos.location or 'Remote' }}</td>
+                        <td>{{ pos.employment_type }}</td>
+                        <td>
+                            <span class="badge-stage {% if pos.status == 'open' %}badge-active{% elif pos.status == 'filled' %}badge-offer{% else %}badge-withdrawn{% endif %}">
+                                {{ pos.status|capitalize }}
+                            </span>
+                        </td>
+                        <td>{{ pos.active_candidates }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-4" style="color: #6C757D;">
+                <i class="bi bi-briefcase" style="font-size: 2rem;"></i>
+                <p class="mt-2">No positions yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

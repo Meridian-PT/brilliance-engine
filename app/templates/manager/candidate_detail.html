@@ -1,0 +1,176 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ candidate.user.name }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1>{{ candidate.user.name }}</h1>
+                <p class="lead">{{ candidate.position.title }} &middot; {{ candidate.user.email }}</p>
+            </div>
+            <div>
+                <span class="badge-stage badge-{{ candidate.current_stage.split('_')[0] }}" style="font-size: 0.9rem; padding: 0.4rem 1rem;">
+                    {{ candidate.stage_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Pipeline Progress -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-diagram-3"></i> Pipeline Progress</h3>
+            <div class="d-flex gap-2">
+                {% if candidate.status in ('active', 'interviewing') %}
+                <form method="POST" action="{{ url_for('manager.advance_candidate', candidate_id=candidate.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-be">
+                        <i class="bi bi-arrow-right-circle"></i> Advance
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('manager.reject_candidate', candidate_id=candidate.id) }}" style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to reject this candidate?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm" style="background: #E74C3C; color: white; border: none; border-radius: 8px;">
+                        <i class="bi bi-x-circle"></i> Reject
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        <div class="content-card-body">
+            <div class="pipeline-stages">
+                {% for key, label in stages %}
+                <div class="pipeline-stage {% if candidate.stage_index > loop.index0 %}completed{% elif candidate.stage_index == loop.index0 %}current{% endif %}">
+                    <div class="pipeline-dot">
+                        {% if candidate.stage_index > loop.index0 %}
+                        <i class="bi bi-check"></i>
+                        {% else %}{{ loop.index }}{% endif %}
+                    </div>
+                    <div class="pipeline-stage-label">{{ label }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Scorecards -->
+        <div class="col-md-8">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-clipboard-data"></i> Scorecards</h3>
+                    <a href="{{ url_for('manager.submit_scorecard', candidate_id=candidate.id) }}" class="btn btn-sm btn-be">
+                        <i class="bi bi-plus"></i> New Scorecard
+                    </a>
+                </div>
+                <div class="content-card-body">
+                    {% if scorecards %}
+                    {% for sc in scorecards %}
+                    <div class="candidate-card">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>{{ dict(stages).get(sc.stage, sc.stage) }}</strong>
+                                <div style="font-size: 0.8rem; color: #6C757D;">
+                                    by {{ sc.evaluator.name }} &middot; {{ sc.submitted_at.strftime('%b %d, %Y') }}
+                                    {% if sc.is_bar_raiser %}<span class="badge" style="background: #F39C12; color: white; font-size: 0.7rem;">Bar Raiser</span>{% endif %}
+                                    {% if sc.bar_raiser_veto %}<span class="badge" style="background: #E74C3C; color: white; font-size: 0.7rem;">VETO</span>{% endif %}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: {% if sc.total_score >= 4 %}#27AE60{% elif sc.total_score >= 3 %}#F39C12{% else %}#E74C3C{% endif %};">
+                                    {{ "%.1f"|format(sc.total_score) }}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #6C757D;">/5.0</div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            {% set dims = [('Communication', sc.communication), ('Experience', sc.experience), ('Niche Skills', sc.niche_skills), ('Thinking', sc.thinking), ('Emotional', sc.emotional), ('Leadership', sc.leadership)] %}
+                            {% for name, val in dims %}
+                            {% if val %}
+                            <div class="col-4 col-md-2">
+                                <div style="font-size: 0.7rem; color: #6C757D;">{{ name }}</div>
+                                <div style="font-weight: 600; color: #1A3A5C;">{{ val }}/5</div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if sc.recommendation %}
+                        <div style="font-size: 0.85rem;">
+                            <strong>Recommendation:</strong>
+                            <span class="badge-stage {% if sc.recommendation == 'strong_yes' %}badge-offer{% elif sc.recommendation == 'yes' %}badge-references{% elif sc.recommendation == 'no' %}badge-final{% elif sc.recommendation == 'strong_no' %}badge-rejected{% else %}badge-active{% endif %}">
+                                {{ sc.recommendation|replace('_', ' ')|title }}
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if sc.comments %}
+                        <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #555;">{{ sc.comments }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-3" style="color: #6C757D;">
+                        <i class="bi bi-clipboard"></i>
+                        <p class="mt-1 mb-0">No scorecards yet. Submit the first one!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Info -->
+        <div class="col-md-4">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-person"></i> Details</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="mb-2"><strong>Name:</strong> {{ candidate.user.name }}</div>
+                    <div class="mb-2"><strong>Email:</strong> {{ candidate.user.email }}</div>
+                    <div class="mb-2"><strong>Position:</strong> {{ candidate.position.title }}</div>
+                    <div class="mb-2"><strong>Applied:</strong> {{ candidate.applied_at.strftime('%B %d, %Y') }}</div>
+                    <div class="mb-2"><strong>Source:</strong> {{ candidate.source or 'Direct' }}</div>
+                    <div><strong>Status:</strong> <span class="text-capitalize">{{ candidate.status }}</span></div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-calendar-event"></i> Interviews</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if interviews %}
+                    {% for iv in interviews %}
+                    <div class="task-item">
+                        <div>
+                            <div class="task-title">{{ dict(stages).get(iv.stage, iv.stage) }}</div>
+                            <div class="task-meta">
+                                {{ iv.scheduled_at.strftime('%b %d, %Y %I:%M %p') if iv.scheduled_at else 'TBD' }}
+                                &middot; {{ iv.status|capitalize }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: #6C757D; font-size: 0.85rem;">No interviews scheduled.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 mb-4">
+        <a href="{{ url_for('manager.dashboard') }}" class="btn btn-be-outline">
+            <i class="bi bi-arrow-left"></i> Back to Pipeline
+        </a>
+    </div>
+</div>
+{% endblock %}

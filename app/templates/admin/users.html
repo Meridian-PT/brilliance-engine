@@ -1,0 +1,61 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Users — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1>Users</h1>
+                <p class="lead">{{ users|length }} total users</p>
+            </div>
+            <a href="{{ url_for('admin.create_user') }}" class="btn btn-be-gold">
+                <i class="bi bi-person-plus"></i> Create User
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            <table class="table table-be mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td><strong>{{ user.name }}</strong></td>
+                        <td>{{ user.email }}</td>
+                        <td><span class="badge-stage badge-{% if user.role == 'admin' %}offer{% elif user.role == 'manager' %}references{% elif user.role == 'newhire' %}who{% else %}active{% endif %}" style="text-transform: capitalize;">{{ user.role }}</span></td>
+                        <td>{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</td>
+                        <td>
+                            {% if user.role == 'candidate' %}
+                            <a href="{{ url_for('admin.setup_onboarding', user_id=user.id) }}" class="btn btn-sm btn-be-outline" title="Set up onboarding">
+                                <i class="bi bi-rocket-takeoff"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

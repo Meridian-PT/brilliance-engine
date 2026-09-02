@@ -1,0 +1,170 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Onboarding — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('newhire.dashboard') }}"><i class="bi bi-speedometer2"></i> My Onboarding</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.culture') }}"><i class="bi bi-heart"></i> Our Culture</a></li>
+{% endblock %}
+
+{% block content %}
+{% if profile %}
+<!-- Welcome Banner -->
+<div class="container-fluid px-4 mt-4">
+    <div class="welcome-banner">
+        <h2>Welcome to Pure Technology, {{ current_user.name }}!</h2>
+        <p>Your journey to actualizing your brilliance starts here. Everything you need is below.</p>
+        <div class="welcome-quote">
+            "Pure isn't a technology company that serves people. It's a people company that empowers through technology."
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4 mb-4">
+        <!-- Progress -->
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="stat-icon mb-2"><i class="bi bi-trophy"></i></div>
+                <div class="stat-value" id="progress-value">{{ profile.progress_pct }}%</div>
+                <div class="stat-label">Onboarding Complete</div>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ profile.progress_pct }}%; background: #D4A843;"
+                         id="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Info -->
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon mb-2"><i class="bi bi-calendar-event"></i></div>
+                <div class="stat-value" style="font-size: 1.2rem;">
+                    {{ profile.start_date.strftime('%B %d, %Y') if profile.start_date else 'TBD' }}
+                </div>
+                <div class="stat-label">Start Date</div>
+                {% if profile.department %}
+                <div class="mt-2" style="font-size: 0.85rem; color: #6C757D;">
+                    <i class="bi bi-building"></i> {{ profile.department }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Your People -->
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon mb-2"><i class="bi bi-people"></i></div>
+                <div class="stat-label mb-2">Your People</div>
+                {% if profile.manager %}
+                <div style="font-size: 0.9rem;"><strong>Manager:</strong> {{ profile.manager.name }}</div>
+                {% endif %}
+                {% if profile.buddy %}
+                <div style="font-size: 0.9rem;"><strong>Buddy:</strong> {{ profile.buddy.name }}</div>
+                {% endif %}
+                {% if not profile.manager and not profile.buddy %}
+                <div style="font-size: 0.9rem; color: #6C757D;">Will be assigned soon</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Checklist -->
+    {% set categories = [
+        ('pre_start', 'Before Day 1', 'bi-clock-history'),
+        ('day_1', 'Day 1', 'bi-sunrise'),
+        ('week_1', 'Week 1', 'bi-calendar-week'),
+        ('day_30', '30-Day Check-In', 'bi-calendar-check'),
+        ('day_60', '60-Day Check-In', 'bi-calendar2-check'),
+        ('day_90', '90-Day Review', 'bi-trophy'),
+    ] %}
+
+    {% for cat_key, cat_label, cat_icon in categories %}
+    {% set tasks = profile.tasks.filter_by(category=cat_key).all() %}
+    {% if tasks %}
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="{{ cat_icon }}"></i> {{ cat_label }}</h3>
+            {% set done = tasks|selectattr('completed')|list|length %}
+            <span style="font-size: 0.85rem; color: #6C757D;">{{ done }}/{{ tasks|length }} complete</span>
+        </div>
+        <div class="content-card-body">
+            {% for task in tasks %}
+            <div class="task-item" id="task-{{ task.id }}">
+                <div class="task-checkbox {% if task.completed %}done{% endif %}"
+                     onclick="toggleTask({{ task.id }})"
+                     id="check-{{ task.id }}">
+                    {% if task.completed %}<i class="bi bi-check"></i>{% endif %}
+                </div>
+                <div>
+                    <div class="task-title {% if task.completed %}done{% endif %}" id="title-{{ task.id }}">
+                        {{ task.title }}
+                    </div>
+                    {% if task.description %}
+                    <div class="task-meta">{{ task.description }}</div>
+                    {% endif %}
+                    {% if task.assigned_to %}
+                    <div class="task-meta">
+                        <i class="bi bi-person"></i> {{ task.assigned_to|capitalize }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+{% else %}
+<!-- No profile yet -->
+<div class="container-fluid px-4 mt-4">
+    <div class="welcome-banner">
+        <h2>Welcome, {{ current_user.name }}!</h2>
+        <p>Your onboarding profile is being set up. Your HR team will have everything ready for you soon.</p>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-body text-center py-5">
+            <i class="bi bi-hourglass-split" style="font-size: 3rem; color: #D4A843;"></i>
+            <h4 class="mt-3" style="color: #1A3A5C;">Getting Things Ready</h4>
+            <p style="color: #6C757D;">
+                Our team is preparing your personalized onboarding experience.<br>
+                Check back soon — your journey to brilliance is about to begin!
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTask(taskId) {
+    fetch(`/newhire/task/${taskId}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const check = document.getElementById(`check-${taskId}`);
+        const title = document.getElementById(`title-${taskId}`);
+        if (data.completed) {
+            check.classList.add('done');
+            check.innerHTML = '<i class="bi bi-check"></i>';
+            title.classList.add('done');
+        } else {
+            check.classList.remove('done');
+            check.innerHTML = '';
+            title.classList.remove('done');
+        }
+        document.getElementById('progress-value').textContent = data.progress + '%';
+        document.getElementById('progress-bar').style.width = data.progress + '%';
+    });
+}
+</script>
+{% endblock %}

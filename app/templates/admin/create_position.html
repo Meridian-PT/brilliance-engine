@@ -1,0 +1,81 @@
+{% extends "dashboard_base.html" %}
+{% block title %}New Position — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Create Position</h1>
+        <p class="lead">Open a new role</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card" style="max-width: 700px;">
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label class="form-label">Job Title</label>
+                    <input type="text" class="form-control" name="title" required placeholder="e.g. Senior Software Engineer">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Department</label>
+                        <input type="text" class="form-control" name="department" placeholder="e.g. Engineering">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-control" name="location" placeholder="e.g. Toronto, ON / Remote">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Employment Type</label>
+                        <select class="form-select" name="employment_type">
+                            <option value="Full-Time">Full-Time</option>
+                            <option value="Part-Time">Part-Time</option>
+                            <option value="Contract">Contract</option>
+                            <option value="Intern">Intern</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Salary Range (Low)</label>
+                        <input type="number" class="form-control" name="salary_low" placeholder="e.g. 80000">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Salary Range (High)</label>
+                        <input type="number" class="form-control" name="salary_high" placeholder="e.g. 120000">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hiring Manager</label>
+                    <select class="form-select" name="hiring_manager_id">
+                        <option value="">— Select —</option>
+                        {% for m in managers %}
+                        <option value="{{ m.id }}">{{ m.name }} ({{ m.role }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" name="description" rows="4" placeholder="Role overview, responsibilities, what the team does..."></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Requirements</label>
+                    <textarea class="form-control" name="requirements" rows="3" placeholder="Required skills, experience, qualifications..."></textarea>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-be">Create Position</button>
+                    <a href="{{ url_for('manager.positions') }}" class="btn btn-be-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

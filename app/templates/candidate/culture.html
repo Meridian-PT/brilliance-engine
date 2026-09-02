@@ -1,0 +1,88 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Our Culture — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('candidate.culture') }}"><i class="bi bi-heart"></i> Our Culture</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Our Culture</h1>
+        <p class="lead">What makes Pure Technology different — and why it matters</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Vision & Mission -->
+    <div class="content-card">
+        <div class="content-card-body" style="text-align: center; padding: 3rem 2rem;">
+            <h2 style="color: #1A3A5C; font-weight: 700;">Our Vision</h2>
+            <p style="font-size: 1.2rem; color: #333; max-width: 600px; margin: 0 auto 2rem;">
+                "A brighter world where all people actualize their brilliance"
+            </p>
+            <h2 style="color: #1A3A5C; font-weight: 700;">Our Mission</h2>
+            <p style="font-size: 1.1rem; color: #6C757D; max-width: 600px; margin: 0 auto 2rem;">
+                Reimagining data innovation to redefine relationships between brands and consumers
+            </p>
+            <h2 style="color: #1A3A5C; font-weight: 700;">Our Identity</h2>
+            <p style="font-size: 1.1rem; color: #333; max-width: 600px; margin: 0 auto; font-style: italic;">
+                "Pure isn't a technology company that serves people.<br>
+                It's a people company that empowers through technology."
+            </p>
+        </div>
+    </div>
+
+    <!-- The 7 Pillars -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3>The 7 Pillars of Pure Technology</h3>
+        </div>
+        <div class="content-card-body">
+            <div class="row g-4">
+                {% set pillars = [
+                    ('bi-shield-check', 'Integrity', 'We do what we say we will do. Honesty is non-negotiable.'),
+                    ('bi-clipboard-check', 'Accountability', 'We own our outcomes — successes and failures alike.'),
+                    ('bi-eye', 'Transparency', 'Open communication. No hidden agendas. Trust is built through visibility.'),
+                    ('bi-graph-up-arrow', 'Growth', 'Continuous learning is expected. Comfort zones are temporary.'),
+                    ('bi-lightbulb', 'Innovation', 'We challenge the status quo. Better exists — we find it.'),
+                    ('bi-lightning', 'Persistence', 'We don\'t quit. Obstacles are information, not stop signs.'),
+                    ('bi-heart', 'Love', 'We genuinely care about each other. This is not corporate speak — it\'s our foundation.'),
+                ] %}
+                {% for icon, name, desc in pillars %}
+                <div class="col-md-6 col-lg-4 {% if loop.last %}col-lg-4{% endif %}">
+                    <div class="pillar-card" style="padding: 1.5rem; text-align: left; height: 100%;">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <i class="{{ icon }}" style="font-size: 1.25rem; color: #D4A843;"></i>
+                            <div class="pillar-name" style="font-size: 1rem;">{{ name }}</div>
+                        </div>
+                        <p style="font-size: 0.9rem; color: #6C757D; margin: 0;">{{ desc }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Actualizing Brilliance -->
+    <div class="content-card">
+        <div class="content-card-body" style="text-align: center; padding: 2.5rem;">
+            <h3 style="color: #D4A843; font-weight: 700;">Actualizing Brilliance</h3>
+            <p style="font-size: 1rem; max-width: 600px; margin: 1rem auto 0; color: #333;">
+                At Pure Technology, we believe every person has brilliance inside them.
+                Our job is to create the environment where that brilliance comes out —
+                through meaningful work, genuine support, and a culture that
+                treats people as whole human beings, not just employees.
+            </p>
+            <div style="margin-top: 1.5rem; padding: 1rem; background: #F8F9FA; border-radius: 8px; display: inline-block;">
+                <p style="margin: 0; font-size: 0.95rem; font-style: italic; color: #1A3A5C;">
+                    "We don't hire people that are good enough to work here.<br>
+                    We hire people we believe will actualize their brilliance!"
+                </p>
+                <p style="margin: 0.5rem 0 0; font-size: 0.8rem; color: #D4A843; font-weight: 600;">— Jared Sanborn, CEO</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

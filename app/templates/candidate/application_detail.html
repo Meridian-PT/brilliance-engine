@@ -1,0 +1,116 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ application.position.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.culture') }}"><i class="bi bi-heart"></i> Our Culture</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>{{ application.position.title }}</h1>
+        <p class="lead">{{ application.position.department or 'General' }} &middot; {{ application.position.location or 'Remote' }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Pipeline Progress -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-diagram-3"></i> Your Progress</h3>
+            <span class="badge-stage badge-active">{{ application.stage_display }}</span>
+        </div>
+        <div class="content-card-body">
+            <div class="pipeline-stages">
+                {% for key, label in stages %}
+                <div class="pipeline-stage {% if application.stage_index > loop.index0 %}completed{% elif application.stage_index == loop.index0 %}current{% endif %}">
+                    <div class="pipeline-dot">
+                        {% if application.stage_index > loop.index0 %}
+                        <i class="bi bi-check"></i>
+                        {% elif application.stage_index == loop.index0 %}
+                        {{ loop.index }}
+                        {% else %}
+                        {{ loop.index }}
+                        {% endif %}
+                    </div>
+                    <div class="pipeline-stage-label">{{ label }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-4 p-3" style="background: #F8F9FA; border-radius: 8px;">
+                <h5 style="color: #1A3A5C;">What's happening now</h5>
+                {% if application.current_stage == 'screening' %}
+                <p>Our team is reviewing your application. We'll be in touch within 3-5 business days to let you know next steps.</p>
+                {% elif application.current_stage == 'criteria_gathering' %}
+                <p>We're setting up the criteria for this role with the hiring manager. You'll hear from us soon to schedule your first conversation.</p>
+                {% elif application.current_stage == 'who_interview' %}
+                <p>You're moving forward! We'd like to have a deeper conversation with you about your background and what drives you. Check your email for scheduling details.</p>
+                {% elif application.current_stage == 'role_specific' %}
+                <p>Great progress! Your next interview will focus on the specific skills and experience for this role. Our team will reach out with details.</p>
+                {% elif application.current_stage == 'final_screen' %}
+                <p>You're in the final stages! This is your chance to meet more of the team and ask any remaining questions.</p>
+                {% elif application.current_stage == 'references_bar_raiser' %}
+                <p>Almost there! We're conducting reference checks and our Bar Raiser review. Please have your references ready.</p>
+                {% elif application.current_stage == 'offer_onboarding' %}
+                <p>Congratulations! We're preparing your offer. Keep an eye on your inbox for the details.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Info -->
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-info-circle"></i> Application Details</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="mb-2"><strong>Position:</strong> {{ application.position.title }}</div>
+                    <div class="mb-2"><strong>Department:</strong> {{ application.position.department or 'General' }}</div>
+                    <div class="mb-2"><strong>Location:</strong> {{ application.position.location or 'Remote' }}</div>
+                    <div class="mb-2"><strong>Type:</strong> {{ application.position.employment_type }}</div>
+                    <div class="mb-2"><strong>Applied:</strong> {{ application.applied_at.strftime('%B %d, %Y') }}</div>
+                    <div><strong>Source:</strong> {{ application.source or 'Direct' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-calendar-event"></i> Upcoming Interviews</h3>
+                </div>
+                <div class="content-card-body">
+                    {% set upcoming = application.interviews.filter_by(status='scheduled').all() %}
+                    {% if upcoming %}
+                    {% for interview in upcoming %}
+                    <div class="task-item">
+                        <div>
+                            <div class="task-title">{{ dict(stages).get(interview.stage, interview.stage) }}</div>
+                            <div class="task-meta">
+                                {{ interview.scheduled_at.strftime('%B %d, %Y at %I:%M %p') if interview.scheduled_at else 'TBD' }}
+                                &middot; {{ interview.interview_type or 'Video' }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-3" style="color: #6C757D;">
+                        <i class="bi bi-calendar3"></i>
+                        <p class="mt-1 mb-0">No interviews scheduled yet. We'll be in touch!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 mb-4">
+        <a href="{{ url_for('candidate.dashboard') }}" class="btn btn-be-outline">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

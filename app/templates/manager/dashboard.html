@@ -1,0 +1,151 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Pipeline — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Hiring Pipeline</h1>
+        <p class="lead">{{ active_candidates|length }} active candidate{{ 's' if active_candidates|length != 1 else '' }} across {{ positions|length }} position{{ 's' if positions|length != 1 else '' }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Stats Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ active_candidates|length }}</div>
+                        <div class="stat-label">Active Candidates</div>
+                    </div>
+                    <div class="stat-icon"><i class="bi bi-people"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ positions|selectattr('status', 'equalto', 'open')|list|length }}</div>
+                        <div class="stat-label">Open Positions</div>
+                    </div>
+                    <div class="stat-icon"><i class="bi bi-briefcase"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ candidates|selectattr('status', 'equalto', 'hired')|list|length }}</div>
+                        <div class="stat-label">Hired This Cycle</div>
+                    </div>
+                    <div class="stat-icon"><i class="bi bi-person-check"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% set in_final = (by_stage.get('final_screen', [])|length) + (by_stage.get('references_bar_raiser', [])|length) + (by_stage.get('offer_onboarding', [])|length) %}
+                        <div class="stat-value">{{ in_final }}</div>
+                        <div class="stat-label">In Final Stages</div>
+                    </div>
+                    <div class="stat-icon"><i class="bi bi-trophy"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline Board (Kanban-style) -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-kanban"></i> Pipeline Board</h3>
+        </div>
+        <div class="content-card-body" style="overflow-x: auto;">
+            <div class="d-flex gap-3" style="min-width: fit-content;">
+                {% for key, label in stages %}
+                {% set stage_candidates = by_stage.get(key, []) %}
+                <div style="min-width: 200px; flex: 1;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 style="color: #1A3A5C; font-weight: 600; margin: 0; font-size: 0.85rem;">{{ label }}</h6>
+                        <span class="badge rounded-pill" style="background: #E9ECEF; color: #333; font-size: 0.75rem;">
+                            {{ stage_candidates|length }}
+                        </span>
+                    </div>
+                    <div style="background: #F8F9FA; border-radius: 8px; padding: 0.75rem; min-height: 120px;">
+                        {% for c in stage_candidates %}
+                        <a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}"
+                           class="d-block candidate-card mb-2" style="text-decoration: none; padding: 0.75rem;">
+                            <div class="candidate-name" style="font-size: 0.9rem;">{{ c.user.name }}</div>
+                            <div class="candidate-position" style="font-size: 0.75rem;">{{ c.position.title }}</div>
+                            <div style="font-size: 0.7rem; color: #999; margin-top: 0.25rem;">
+                                {{ c.applied_at.strftime('%b %d') }}
+                            </div>
+                        </a>
+                        {% endfor %}
+                        {% if not stage_candidates %}
+                        <div class="text-center py-3" style="color: #CCC; font-size: 0.8rem;">
+                            No candidates
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Candidate List -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-list-ul"></i> All Active Candidates</h3>
+        </div>
+        <div class="content-card-body p-0">
+            {% if active_candidates %}
+            <table class="table table-be mb-0">
+                <thead>
+                    <tr>
+                        <th>Candidate</th>
+                        <th>Position</th>
+                        <th>Stage</th>
+                        <th>Applied</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in active_candidates %}
+                    <tr>
+                        <td>
+                            <strong>{{ c.user.name }}</strong>
+                            <div style="font-size: 0.8rem; color: #6C757D;">{{ c.user.email }}</div>
+                        </td>
+                        <td>{{ c.position.title }}</td>
+                        <td><span class="badge-stage badge-{{ c.current_stage.split('_')[0] }}">{{ c.stage_display }}</span></td>
+                        <td>{{ c.applied_at.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}" class="btn btn-sm btn-be-outline">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-4" style="color: #6C757D;">
+                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                <p class="mt-2">No active candidates yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

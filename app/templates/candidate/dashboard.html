@@ -1,0 +1,134 @@
+{% extends "dashboard_base.html" %}
+{% block title %}My Applications — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('candidate.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.culture') }}"><i class="bi bi-heart"></i> Our Culture</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Welcome, {{ current_user.name }}</h1>
+        <p class="lead">Track your applications and explore what makes Pure Technology special</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Active Applications -->
+    {% if applications %}
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-briefcase"></i> My Applications</h3>
+        </div>
+        <div class="content-card-body">
+            {% for app in applications %}
+            <div class="candidate-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <div class="candidate-name">{{ app.position.title }}</div>
+                        <div class="candidate-position">
+                            {{ app.position.department or 'General' }} &middot;
+                            {{ app.position.location or 'Remote' }} &middot;
+                            Applied {{ app.applied_at.strftime('%B %d, %Y') }}
+                        </div>
+                    </div>
+                    <span class="badge-stage badge-{{ app.current_stage.split('_')[0] }}">{{ app.stage_display }}</span>
+                </div>
+
+                <!-- Pipeline Progress -->
+                <div class="pipeline-stages">
+                    {% for key, label in stages %}
+                    <div class="pipeline-stage {% if app.stage_index > loop.index0 %}completed{% elif app.stage_index == loop.index0 %}current{% endif %}">
+                        <div class="pipeline-dot">
+                            {% if app.stage_index > loop.index0 %}
+                            <i class="bi bi-check"></i>
+                            {% elif app.stage_index == loop.index0 %}
+                            {{ loop.index }}
+                            {% else %}
+                            {{ loop.index }}
+                            {% endif %}
+                        </div>
+                        <div class="pipeline-stage-label">{{ label }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="mt-2">
+                    <a href="{{ url_for('candidate.application_detail', app_id=app.id) }}" class="btn btn-sm btn-be-outline">
+                        View Details <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Open Positions -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-search"></i> Open Positions</h3>
+        </div>
+        <div class="content-card-body">
+            {% if open_positions %}
+            <div class="row g-3">
+                {% for pos in open_positions %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="candidate-card h-100">
+                        <div class="candidate-name">{{ pos.title }}</div>
+                        <div class="candidate-position mb-2">
+                            {{ pos.department or 'General' }} &middot;
+                            {{ pos.location or 'Remote' }} &middot;
+                            {{ pos.employment_type }}
+                        </div>
+                        {% if pos.salary_range_low and pos.salary_range_high %}
+                        <div style="font-size: 0.85rem; color: #27AE60; font-weight: 600; margin-bottom: 0.5rem;">
+                            ${{ "{:,}".format(pos.salary_range_low) }} — ${{ "{:,}".format(pos.salary_range_high) }}
+                        </div>
+                        {% endif %}
+                        {% if pos.description %}
+                        <p style="font-size: 0.85rem; color: #6C757D; margin-bottom: 0.75rem;">
+                            {{ pos.description[:150] }}{% if pos.description|length > 150 %}...{% endif %}
+                        </p>
+                        {% endif %}
+                        <form method="POST" action="{{ url_for('candidate.apply', position_id=pos.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-be">Apply Now</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4" style="color: #6C757D;">
+                <i class="bi bi-briefcase" style="font-size: 2rem;"></i>
+                <p class="mt-2">No open positions right now. Check back soon!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Culture Preview -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-heart"></i> Why Pure Technology?</h3>
+            <a href="{{ url_for('candidate.culture') }}" class="btn btn-sm btn-be-outline">Learn More</a>
+        </div>
+        <div class="content-card-body">
+            <div class="welcome-quote" style="border-left-color: #D4A843; margin: 0;">
+                "Pure isn't a technology company that serves people. It's a people company that empowers through technology."
+            </div>
+            <div class="row g-3 mt-3">
+                {% for pillar in ['Integrity', 'Accountability', 'Transparency', 'Growth', 'Innovation', 'Persistence', 'Love'] %}
+                <div class="col">
+                    <div class="pillar-card">
+                        <div class="pillar-name">{{ pillar }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
