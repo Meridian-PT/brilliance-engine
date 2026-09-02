@@ -15,7 +15,7 @@
             </ul>
             {% if current_user.is_authenticated and current_user.role in ('admin', 'manager') %}
             <form class="d-flex me-3" action="{{ url_for('admin.search') if current_user.role == 'admin' else url_for('manager.search') }}" method="GET">
-                <input type="search" name="q" class="form-control form-control-sm" placeholder="Search..." style="width: 200px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white;" value="{{ request.args.get('q', '') }}">
+                <input type="search" name="q" class="form-control form-control-sm" placeholder="Search..." style="width: 200px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.05); color: var(--text);" value="{{ request.args.get('q', '') }}">
             </form>
             {% endif %}
             <ul class="navbar-nav">

@@ -39,8 +39,8 @@
                 {% endfor %}
             </div>
 
-            <div class="mt-4 p-3" style="background: #F8F9FA; border-radius: 8px;">
-                <h5 style="color: #1A3A5C;">What's happening now</h5>
+            <div class="mt-4 p-3" style="background: #10151f; border-radius: 8px;">
+                <h5 style="color: #2a93c1;">What's happening now</h5>
                 {% if application.current_stage == 'screening' %}
                 <p>Our team is reviewing your application. We'll be in touch within 3-5 business days to let you know next steps.</p>
                 {% elif application.current_stage == 'criteria_gathering' %}
@@ -84,7 +84,7 @@
                     {% endif %}
                     {% if application.cover_letter %}
                     <div><strong>Cover Letter:</strong>
-                        <p style="font-size: 0.85rem; color: #555; white-space: pre-wrap;">{{ application.cover_letter }}</p>
+                        <p style="font-size: 0.85rem; color: #8899aa; white-space: pre-wrap;">{{ application.cover_letter }}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -110,7 +110,7 @@
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div class="text-center py-3" style="color: #6C757D;">
+                    <div class="text-center py-3" style="color: #8899aa;">
                         <i class="bi bi-calendar3"></i>
                         <p class="mt-1 mb-0">No interviews scheduled yet. We'll be in touch!</p>
                     </div>

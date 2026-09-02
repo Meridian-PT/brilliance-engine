@@ -88,7 +88,7 @@
                         </div>
                         {% endif %}
                         {% if pos.description %}
-                        <p style="font-size: 0.85rem; color: #6C757D; margin-bottom: 0.75rem;">
+                        <p style="font-size: 0.85rem; color: #8899aa; margin-bottom: 0.75rem;">
                             {{ pos.description[:150] }}{% if pos.description|length > 150 %}...{% endif %}
                         </p>
                         {% endif %}
@@ -98,7 +98,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="text-center py-4" style="color: #6C757D;">
+            <div class="text-center py-4" style="color: #8899aa;">
                 <i class="bi bi-briefcase" style="font-size: 2rem;"></i>
                 <p class="mt-2">No open positions right now. Check back soon!</p>
             </div>
@@ -113,7 +113,7 @@
             <a href="{{ url_for('candidate.culture') }}" class="btn btn-sm btn-be-outline">Learn More</a>
         </div>
         <div class="content-card-body">
-            <div class="welcome-quote" style="border-left-color: #D4A843; margin: 0;">
+            <div class="welcome-quote" style="border-left-color: #f1420b; margin: 0;">
                 "Pure isn't a technology company that serves people. It's a people company that empowers through technology."
             </div>
             <div class="row g-3 mt-3">

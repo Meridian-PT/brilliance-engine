@@ -46,9 +46,9 @@
                         <td><span class="badge-stage badge-{% if user.role == 'admin' %}offer{% elif user.role == 'manager' %}references{% elif user.role == 'newhire' %}who{% else %}active{% endif %}" style="text-transform: capitalize;">{{ user.role }}</span></td>
                         <td>
                             {% if user.is_active_user %}
-                            <span class="badge" style="background: #EAFAF1; color: #27AE60;">Active</span>
+                            <span class="badge" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Active</span>
                             {% else %}
-                            <span class="badge" style="background: #FDEDEC; color: #E74C3C;">Inactive</span>
+                            <span class="badge" style="background: rgba(231,76,60,0.15); color: #e74c3c;">Inactive</span>
                             {% endif %}
                         </td>
                         <td>{{ user.created_at.strftime('%b %d, %Y') if user.created_at else '—' }}</td>

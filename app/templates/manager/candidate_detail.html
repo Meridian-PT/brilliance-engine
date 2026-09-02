@@ -79,7 +79,7 @@
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <strong>{{ dict(stages).get(sc.stage, sc.stage) }}</strong>
-                                <div style="font-size: 0.8rem; color: #6C757D;">
+                                <div style="font-size: 0.8rem; color: #8899aa;">
                                     by {{ sc.evaluator.name }} &middot; {{ sc.submitted_at.strftime('%b %d, %Y') }}
                                     {% if sc.is_bar_raiser %}<span class="badge" style="background: #F39C12; color: white; font-size: 0.7rem;">Bar Raiser</span>{% endif %}
                                     {% if sc.bar_raiser_veto %}<span class="badge" style="background: #E74C3C; color: white; font-size: 0.7rem;">VETO</span>{% endif %}
@@ -89,7 +89,7 @@
                                 <div style="font-size: 1.5rem; font-weight: 700; color: {% if sc.total_score >= 4 %}#27AE60{% elif sc.total_score >= 3 %}#F39C12{% else %}#E74C3C{% endif %};">
                                     {{ "%.1f"|format(sc.total_score) }}
                                 </div>
-                                <div style="font-size: 0.75rem; color: #6C757D;">/5.0</div>
+                                <div style="font-size: 0.75rem; color: #8899aa;">/5.0</div>
                             </div>
                         </div>
                         <div class="row g-2 mb-2">
@@ -97,8 +97,8 @@
                             {% for name, val in dims %}
                             {% if val %}
                             <div class="col-4 col-md-2">
-                                <div style="font-size: 0.7rem; color: #6C757D;">{{ name }}</div>
-                                <div style="font-weight: 600; color: #1A3A5C;">{{ val }}/5</div>
+                                <div style="font-size: 0.7rem; color: #8899aa;">{{ name }}</div>
+                                <div style="font-weight: 600; color: #2a93c1;">{{ val }}/5</div>
                             </div>
                             {% endif %}
                             {% endfor %}
@@ -112,12 +112,12 @@
                         </div>
                         {% endif %}
                         {% if sc.comments %}
-                        <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #555;">{{ sc.comments }}</div>
+                        <div style="font-size: 0.85rem; margin-top: 0.5rem; color: #8899aa;">{{ sc.comments }}</div>
                         {% endif %}
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div class="text-center py-3" style="color: #6C757D;">
+                    <div class="text-center py-3" style="color: #8899aa;">
                         <i class="bi bi-clipboard"></i>
                         <p class="mt-1 mb-0">No scorecards yet. Submit the first one!</p>
                     </div>
@@ -145,9 +145,9 @@
                             <div class="d-flex justify-content-between">
                                 <div class="task-title">
                                     {% if note.note_type == 'system' %}
-                                    <i class="bi bi-gear" style="color: #6C757D;"></i>
+                                    <i class="bi bi-gear" style="color: #8899aa;"></i>
                                     {% else %}
-                                    <i class="bi bi-chat-left" style="color: #1A3A5C;"></i>
+                                    <i class="bi bi-chat-left" style="color: #2a93c1;"></i>
                                     {% endif %}
                                     {{ note.content }}
                                 </div>
@@ -160,7 +160,7 @@
                     </div>
                     {% endfor %}
                     {% else %}
-                    <div class="text-center py-2" style="color: #6C757D; font-size: 0.85rem;">
+                    <div class="text-center py-2" style="color: #8899aa; font-size: 0.85rem;">
                         No notes yet.
                     </div>
                     {% endif %}
@@ -192,7 +192,7 @@
                     {% if candidate.cover_letter %}
                     <div>
                         <strong>Cover Letter:</strong>
-                        <p style="font-size: 0.85rem; color: #555; white-space: pre-wrap;">{{ candidate.cover_letter }}</p>
+                        <p style="font-size: 0.85rem; color: #8899aa; white-space: pre-wrap;">{{ candidate.cover_letter }}</p>
                     </div>
                     {% endif %}
                 </div>
@@ -234,7 +234,7 @@
                     </div>
                     {% endfor %}
                     {% else %}
-                    <p style="color: #6C757D; font-size: 0.85rem;">No interviews scheduled.</p>
+                    <p style="color: #8899aa; font-size: 0.85rem;">No interviews scheduled.</p>
                     {% endif %}
                 </div>
             </div>

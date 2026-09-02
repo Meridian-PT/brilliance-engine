@@ -23,7 +23,7 @@
         {% set stats = [
             ('bi-people', active_candidates, 'Active Candidates', '#3498DB'),
             ('bi-briefcase', open_positions, 'Open Positions', '#27AE60'),
-            ('bi-person-check', total_hires, 'Total Hires', '#D4A843'),
+            ('bi-person-check', total_hires, 'Total Hires', '#f1420b'),
             ('bi-rocket-takeoff', total_newhires, 'In Onboarding', '#E67E22'),
             ('bi-person-badge', total_users, 'Total Users', '#8E44AD'),
             ('bi-file-earmark-text', total_documents, 'Documents', '#1ABC9C'),
@@ -58,7 +58,7 @@
                         <div class="d-flex align-items-center gap-2" style="width: 60%;">
                             <div class="progress flex-grow-1" style="height: 8px;">
                                 {% set max_count = pipeline.values()|max if pipeline.values()|list else 1 %}
-                                <div class="progress-bar" style="width: {{ (count / max_count * 100) if max_count else 0 }}%; background: #1A3A5C;"></div>
+                                <div class="progress-bar" style="width: {{ (count / max_count * 100) if max_count else 0 }}%; background: #2a93c1;"></div>
                             </div>
                             <span style="font-size: 0.85rem; font-weight: 600; min-width: 25px; text-align: right;">{{ count }}</span>
                         </div>
@@ -87,7 +87,7 @@
                             {% for c in recent_candidates %}
                             <tr>
                                 <td>
-                                    <a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}" style="color: #1A3A5C; font-weight: 600; text-decoration: none;">
+                                    <a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}" style="color: #2a93c1; font-weight: 600; text-decoration: none;">
                                         {{ c.user.name }}
                                     </a>
                                 </td>
@@ -99,7 +99,7 @@
                         </tbody>
                     </table>
                     {% else %}
-                    <div class="text-center py-3" style="color: #6C757D;">No applications yet.</div>
+                    <div class="text-center py-3" style="color: #8899aa;">No applications yet.</div>
                     {% endif %}
                 </div>
             </div>
@@ -136,10 +136,10 @@
                     <div class="mb-2" style="font-size: 0.85rem;">
                         <strong>Brilliance Engine</strong> v1.0
                     </div>
-                    <div class="mb-2" style="font-size: 0.85rem; color: #6C757D;">
+                    <div class="mb-2" style="font-size: 0.85rem; color: #8899aa;">
                         Built on PT's 68-step hiring process, 7 scoring systems, and Pure Method 2.0
                     </div>
-                    <div style="font-size: 0.8rem; color: #999;">
+                    <div style="font-size: 0.8rem; color: #667788;">
                         <i class="bi bi-building"></i> Pure Technology<br>
                         <i class="bi bi-heart"></i> Actualizing Brilliance
                     </div>

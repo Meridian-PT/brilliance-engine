@@ -75,24 +75,24 @@
                 {% set stage_candidates = by_stage.get(key, []) %}
                 <div style="min-width: 200px; flex: 1;">
                     <div class="d-flex align-items-center justify-content-between mb-2">
-                        <h6 style="color: #1A3A5C; font-weight: 600; margin: 0; font-size: 0.85rem;">{{ label }}</h6>
-                        <span class="badge rounded-pill" style="background: #E9ECEF; color: #333; font-size: 0.75rem;">
+                        <h6 style="color: #2a93c1; font-weight: 600; margin: 0; font-size: 0.85rem;">{{ label }}</h6>
+                        <span class="badge rounded-pill" style="background: rgba(42,147,193,0.15); color: #eef4fa; font-size: 0.75rem;">
                             {{ stage_candidates|length }}
                         </span>
                     </div>
-                    <div style="background: #F8F9FA; border-radius: 8px; padding: 0.75rem; min-height: 120px;">
+                    <div style="background: #10151f; border-radius: 8px; padding: 0.75rem; min-height: 120px;">
                         {% for c in stage_candidates %}
                         <a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}"
                            class="d-block candidate-card mb-2" style="text-decoration: none; padding: 0.75rem;">
                             <div class="candidate-name" style="font-size: 0.9rem;">{{ c.user.name }}</div>
                             <div class="candidate-position" style="font-size: 0.75rem;">{{ c.position.title }}</div>
-                            <div style="font-size: 0.7rem; color: #999; margin-top: 0.25rem;">
+                            <div style="font-size: 0.7rem; color: #667788; margin-top: 0.25rem;">
                                 {{ c.applied_at.strftime('%b %d') }}
                             </div>
                         </a>
                         {% endfor %}
                         {% if not stage_candidates %}
-                        <div class="text-center py-3" style="color: #CCC; font-size: 0.8rem;">
+                        <div class="text-center py-3" style="color: #556677; font-size: 0.8rem;">
                             No candidates
                         </div>
                         {% endif %}
@@ -125,7 +125,7 @@
                     <tr>
                         <td>
                             <strong>{{ c.user.name }}</strong>
-                            <div style="font-size: 0.8rem; color: #6C757D;">{{ c.user.email }}</div>
+                            <div style="font-size: 0.8rem; color: #8899aa;">{{ c.user.email }}</div>
                         </td>
                         <td>{{ c.position.title }}</td>
                         <td><span class="badge-stage badge-{{ c.current_stage.split('_')[0] }}">{{ c.stage_display }}</span></td>
@@ -140,7 +140,7 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="text-center py-4" style="color: #6C757D;">
+            <div class="text-center py-4" style="color: #8899aa;">
                 <i class="bi bi-inbox" style="font-size: 2rem;"></i>
                 <p class="mt-2">No active candidates yet.</p>
             </div>
