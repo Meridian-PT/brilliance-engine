@@ -1,9 +1,11 @@
+import uuid
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from datetime import datetime, date, timezone
 from app import db
 from app.models import (User, Candidate, Position, Interview, Scorecard,
-                         NewHire, OnboardingTask, Document, PIPELINE_STAGES)
+                         NewHire, OnboardingTask, Document, FileAttachment,
+                         PIPELINE_STAGES)
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
@@ -56,6 +58,8 @@ def dashboard():
                            stages=PIPELINE_STAGES)
 
 
+# ── Users ────────────────────────────────────────────────────────────────────
+
 @admin_bp.route('/users')
 @login_required
 @admin_required
@@ -89,6 +93,50 @@ def create_user():
     return render_template('admin/create_user.html')
 
 
+@admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        user.name = request.form.get('name', user.name).strip()
+        email = request.form.get('email', user.email).strip().lower()
+        role = request.form.get('role', user.role)
+        password = request.form.get('password', '').strip()
+
+        existing = User.query.filter(User.email == email, User.id != user.id).first()
+        if existing:
+            flash('Email already in use by another user.', 'error')
+        else:
+            user.email = email
+            user.role = role
+            if password:
+                user.set_password(password)
+            db.session.commit()
+            flash(f'User {user.name} updated.', 'success')
+            return redirect(url_for('admin.users'))
+
+    return render_template('admin/edit_user.html', user=user)
+
+
+@admin_bp.route('/users/<int:user_id>/toggle-active', methods=['POST'])
+@login_required
+@admin_required
+def toggle_user_active(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        flash('You cannot deactivate yourself.', 'error')
+    else:
+        user.is_active_user = not user.is_active_user
+        db.session.commit()
+        status = 'activated' if user.is_active_user else 'deactivated'
+        flash(f'{user.name} has been {status}.', 'success')
+    return redirect(url_for('admin.users'))
+
+
+# ── Positions ────────────────────────────────────────────────────────────────
+
 @admin_bp.route('/positions/create', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -114,6 +162,33 @@ def create_position():
     managers = User.query.filter(User.role.in_(['manager', 'admin'])).all()
     return render_template('admin/create_position.html', managers=managers)
 
+
+@admin_bp.route('/positions/<int:position_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_position(position_id):
+    position = Position.query.get_or_404(position_id)
+
+    if request.method == 'POST':
+        position.title = request.form.get('title', position.title).strip()
+        position.department = request.form.get('department', '').strip()
+        position.location = request.form.get('location', '').strip()
+        position.employment_type = request.form.get('employment_type', 'Full-Time')
+        position.description = request.form.get('description', '').strip()
+        position.requirements = request.form.get('requirements', '').strip()
+        position.salary_range_low = int(request.form.get('salary_low', 0)) or None
+        position.salary_range_high = int(request.form.get('salary_high', 0)) or None
+        position.hiring_manager_id = int(request.form.get('hiring_manager_id', 0)) or None
+        position.status = request.form.get('status', position.status)
+        db.session.commit()
+        flash(f'Position "{position.title}" updated.', 'success')
+        return redirect(url_for('manager.positions'))
+
+    managers = User.query.filter(User.role.in_(['manager', 'admin'])).all()
+    return render_template('admin/edit_position.html', position=position, managers=managers)
+
+
+# ── Onboarding ───────────────────────────────────────────────────────────────
 
 @admin_bp.route('/onboarding/setup/<int:user_id>', methods=['GET', 'POST'])
 @login_required
@@ -157,13 +232,109 @@ def setup_onboarding(user_id):
                            all_users=all_users, positions=positions)
 
 
+# ── Documents ────────────────────────────────────────────────────────────────
+
 @admin_bp.route('/documents')
 @login_required
 @admin_required
 def documents():
     docs = Document.query.order_by(Document.category, Document.title).all()
-    return render_template('admin/documents.html', documents=docs)
+    # Build file lookup for documents that have uploaded files
+    file_lookup = {}
+    for doc in docs:
+        attachment = FileAttachment.query.filter_by(
+            attachment_type='document', attachment_id=doc.id
+        ).first()
+        if attachment:
+            file_lookup[doc.id] = attachment
+    return render_template('admin/documents.html', documents=docs, file_lookup=file_lookup)
 
+
+@admin_bp.route('/documents/upload', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def upload_document():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        category = request.form.get('category', '').strip()
+        module = request.form.get('module', '').strip()
+        description = request.form.get('description', '').strip()
+        is_template = 'is_template' in request.form
+        file = request.files.get('file')
+
+        if not title:
+            flash('Title is required.', 'error')
+        else:
+            file_type = ''
+            if file and file.filename:
+                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+                file_type = ext
+
+            doc = Document(
+                title=title,
+                category=category or None,
+                module=module or None,
+                description=description or None,
+                file_type=file_type or None,
+                origin='uploaded',
+                is_template=is_template,
+            )
+            db.session.add(doc)
+            db.session.flush()
+
+            if file and file.filename:
+                stored_name = f"{uuid.uuid4().hex}.{file_type}" if file_type else uuid.uuid4().hex
+                attachment = FileAttachment(
+                    filename=stored_name,
+                    original_filename=file.filename,
+                    mime_type=file.content_type,
+                    file_size=0,
+                    file_data=file.read(),
+                    uploaded_by=current_user.id,
+                    attachment_type='document',
+                    attachment_id=doc.id,
+                )
+                attachment.file_size = len(attachment.file_data)
+                db.session.add(attachment)
+
+            db.session.commit()
+            flash(f'Document "{title}" uploaded.', 'success')
+            return redirect(url_for('admin.documents'))
+
+    return render_template('admin/upload_document.html')
+
+
+# ── Search ───────────────────────────────────────────────────────────────────
+
+@admin_bp.route('/search')
+@login_required
+@admin_required
+def search():
+    q = request.args.get('q', '').strip()
+    results = {'users': [], 'candidates': [], 'positions': [], 'documents': []}
+
+    if q:
+        like = f'%{q}%'
+        results['users'] = User.query.filter(
+            db.or_(User.name.ilike(like), User.email.ilike(like))
+        ).limit(20).all()
+        results['candidates'] = Candidate.query.join(User).join(Position).filter(
+            db.or_(User.name.ilike(like), User.email.ilike(like), Position.title.ilike(like))
+        ).limit(20).all()
+        results['positions'] = Position.query.filter(
+            db.or_(Position.title.ilike(like), Position.department.ilike(like),
+                   Position.location.ilike(like))
+        ).limit(20).all()
+        results['documents'] = Document.query.filter(
+            db.or_(Document.title.ilike(like), Document.description.ilike(like),
+                   Document.category.ilike(like))
+        ).limit(20).all()
+
+    total = sum(len(v) for v in results.values())
+    return render_template('admin/search.html', q=q, results=results, total=total)
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _create_default_tasks(new_hire_id):
     """Create the standard Pure Start onboarding tasks."""

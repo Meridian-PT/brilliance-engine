@@ -1,0 +1,67 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Profile — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+{% if current_user.role == 'admin' %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+{% elif current_user.role == 'manager' %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+{% elif current_user.role == 'candidate' %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+{% elif current_user.role == 'newhire' %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('newhire.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>My Profile</h1>
+        <p class="lead">{{ current_user.email }} &middot; {{ current_user.role|capitalize }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card" style="max-width: 600px;">
+        <div class="content-card-header">
+            <h3><i class="bi bi-person-gear"></i> Edit Profile</h3>
+        </div>
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ current_user.name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ current_user.email }}" required>
+                </div>
+
+                <hr>
+                <h5 style="color: #1A3A5C;">Change Password</h5>
+                <p style="font-size: 0.85rem; color: #6C757D;">Leave blank to keep your current password.</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" name="current_password" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" name="new_password" class="form-control" minlength="8">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" name="confirm_password" class="form-control" minlength="8">
+                </div>
+
+                <button type="submit" class="btn btn-be"><i class="bi bi-check"></i> Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

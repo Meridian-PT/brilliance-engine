@@ -74,6 +74,26 @@ class Position(db.Model):
         return self.candidates.filter(Candidate.status.in_(['active', 'interviewing'])).count()
 
 
+class FileAttachment(db.Model):
+    __tablename__ = 'file_attachments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(100))
+    file_size = db.Column(db.Integer)
+    file_data = db.Column(db.LargeBinary, nullable=False)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    attachment_type = db.Column(db.String(50))  # resume, cover_letter, document
+    attachment_id = db.Column(db.Integer)  # FK to candidate_id or document_id
+    uploaded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    uploader = db.relationship('User', foreign_keys=[uploaded_by])
+
+    def __repr__(self):
+        return f'<FileAttachment {self.original_filename}>'
+
+
 class Candidate(db.Model):
     __tablename__ = 'candidates'
 
@@ -94,6 +114,18 @@ class Candidate(db.Model):
 
     def __repr__(self):
         return f'<Candidate {self.user.name} for {self.position.title}>'
+
+    @property
+    def resume(self):
+        return FileAttachment.query.filter_by(
+            attachment_type='resume', attachment_id=self.id
+        ).order_by(FileAttachment.uploaded_at.desc()).first()
+
+    @property
+    def cover_letter_file(self):
+        return FileAttachment.query.filter_by(
+            attachment_type='cover_letter', attachment_id=self.id
+        ).order_by(FileAttachment.uploaded_at.desc()).first()
 
     @property
     def stage_display(self):
@@ -243,3 +275,21 @@ class Document(db.Model):
 
     def __repr__(self):
         return f'<Document {self.title}>'
+
+
+class CandidateNote(db.Model):
+    __tablename__ = 'candidate_notes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    candidate_id = db.Column(db.Integer, db.ForeignKey('candidates.id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    content = db.Column(db.Text, nullable=False)
+    note_type = db.Column(db.String(20), default='manual')  # manual, system
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    candidate = db.relationship('Candidate', backref=db.backref('candidate_notes', lazy='dynamic',
+                                order_by='CandidateNote.created_at.desc()'))
+    author = db.relationship('User', foreign_keys=[author_id])
+
+    def __repr__(self):
+        return f'<CandidateNote {self.id} for candidate {self.candidate_id}>'

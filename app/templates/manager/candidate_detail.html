@@ -124,6 +124,48 @@
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Notes & Timeline -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-chat-left-text"></i> Notes & Timeline</h3>
+                </div>
+                <div class="content-card-body">
+                    <form method="POST" action="{{ url_for('manager.add_note', candidate_id=candidate.id) }}" class="mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="d-flex gap-2">
+                            <input type="text" name="content" class="form-control" placeholder="Add a note..." required>
+                            <button type="submit" class="btn btn-be"><i class="bi bi-plus"></i></button>
+                        </div>
+                    </form>
+                    {% if notes %}
+                    {% for note in notes %}
+                    <div class="task-item">
+                        <div style="width: 100%;">
+                            <div class="d-flex justify-content-between">
+                                <div class="task-title">
+                                    {% if note.note_type == 'system' %}
+                                    <i class="bi bi-gear" style="color: #6C757D;"></i>
+                                    {% else %}
+                                    <i class="bi bi-chat-left" style="color: #1A3A5C;"></i>
+                                    {% endif %}
+                                    {{ note.content }}
+                                </div>
+                            </div>
+                            <div class="task-meta">
+                                {% if note.author %}{{ note.author.name }}{% else %}System{% endif %}
+                                &middot; {{ note.created_at.strftime('%b %d, %Y %I:%M %p') }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-2" style="color: #6C757D; font-size: 0.85rem;">
+                        No notes yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <!-- Sidebar Info -->
@@ -138,23 +180,55 @@
                     <div class="mb-2"><strong>Position:</strong> {{ candidate.position.title }}</div>
                     <div class="mb-2"><strong>Applied:</strong> {{ candidate.applied_at.strftime('%B %d, %Y') }}</div>
                     <div class="mb-2"><strong>Source:</strong> {{ candidate.source or 'Direct' }}</div>
-                    <div><strong>Status:</strong> <span class="text-capitalize">{{ candidate.status }}</span></div>
+                    <div class="mb-2"><strong>Status:</strong> <span class="text-capitalize">{{ candidate.status }}</span></div>
+                    {% if candidate.resume %}
+                    <div class="mb-2">
+                        <strong>Resume:</strong>
+                        <a href="{{ url_for('files.download', file_id=candidate.resume.id) }}">
+                            <i class="bi bi-file-earmark-arrow-down"></i> {{ candidate.resume.original_filename }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if candidate.cover_letter %}
+                    <div>
+                        <strong>Cover Letter:</strong>
+                        <p style="font-size: 0.85rem; color: #555; white-space: pre-wrap;">{{ candidate.cover_letter }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
             <div class="content-card">
                 <div class="content-card-header">
                     <h3><i class="bi bi-calendar-event"></i> Interviews</h3>
+                    <a href="{{ url_for('manager.create_interview', candidate_id=candidate.id) }}" class="btn btn-sm btn-be">
+                        <i class="bi bi-plus"></i> Schedule
+                    </a>
                 </div>
                 <div class="content-card-body">
                     {% if interviews %}
                     {% for iv in interviews %}
                     <div class="task-item">
-                        <div>
-                            <div class="task-title">{{ dict(stages).get(iv.stage, iv.stage) }}</div>
-                            <div class="task-meta">
-                                {{ iv.scheduled_at.strftime('%b %d, %Y %I:%M %p') if iv.scheduled_at else 'TBD' }}
-                                &middot; {{ iv.status|capitalize }}
+                        <div style="width: 100%;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="task-title">{{ dict(stages).get(iv.stage, iv.stage) }}</div>
+                                    <div class="task-meta">
+                                        {{ iv.scheduled_at.strftime('%b %d, %Y %I:%M %p') if iv.scheduled_at else 'TBD' }}
+                                        &middot; {{ iv.interview_type|replace('_', ' ')|title if iv.interview_type else 'Video' }}
+                                        &middot; {{ iv.status|capitalize }}
+                                        {% if iv.interviewer %}&middot; {{ iv.interviewer.name }}{% endif %}
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-1">
+                                    {% if iv.status == 'scheduled' %}
+                                    <a href="{{ url_for('manager.edit_interview', interview_id=iv.id) }}" class="btn btn-sm btn-be-outline" title="Edit"><i class="bi bi-pencil"></i></a>
+                                    <form method="POST" action="{{ url_for('manager.cancel_interview', interview_id=iv.id) }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-be-outline" title="Cancel"><i class="bi bi-x"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>

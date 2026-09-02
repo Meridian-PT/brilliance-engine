@@ -73,7 +73,20 @@
                     <div class="mb-2"><strong>Location:</strong> {{ application.position.location or 'Remote' }}</div>
                     <div class="mb-2"><strong>Type:</strong> {{ application.position.employment_type }}</div>
                     <div class="mb-2"><strong>Applied:</strong> {{ application.applied_at.strftime('%B %d, %Y') }}</div>
-                    <div><strong>Source:</strong> {{ application.source or 'Direct' }}</div>
+                    <div class="mb-2"><strong>Source:</strong> {{ application.source or 'Direct' }}</div>
+                    {% if application.resume %}
+                    <div class="mb-2">
+                        <strong>Resume:</strong>
+                        <a href="{{ url_for('files.download', file_id=application.resume.id) }}">
+                            <i class="bi bi-file-earmark-arrow-down"></i> {{ application.resume.original_filename }}
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if application.cover_letter %}
+                    <div><strong>Cover Letter:</strong>
+                        <p style="font-size: 0.85rem; color: #555; white-space: pre-wrap;">{{ application.cover_letter }}</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>

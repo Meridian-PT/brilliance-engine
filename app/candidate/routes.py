@@ -1,7 +1,8 @@
+import uuid
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app import db
-from app.models import Candidate, Position, PIPELINE_STAGES
+from app.models import Candidate, Position, FileAttachment, PIPELINE_STAGES
 
 candidate_bp = Blueprint('candidate', __name__, template_folder='../templates/candidate')
 
@@ -29,7 +30,7 @@ def dashboard():
                            stages=PIPELINE_STAGES)
 
 
-@candidate_bp.route('/apply/<int:position_id>', methods=['POST'])
+@candidate_bp.route('/apply/<int:position_id>', methods=['GET', 'POST'])
 @login_required
 @candidate_required
 def apply(position_id):
@@ -37,15 +38,40 @@ def apply(position_id):
     existing = Candidate.query.filter_by(user_id=current_user.id, position_id=position_id).first()
     if existing:
         flash('You have already applied for this position.', 'warning')
-    else:
-        candidate = Candidate(
-            user_id=current_user.id,
-            position_id=position_id,
-            source='website',
+        return redirect(url_for('candidate.dashboard'))
+
+    if request.method == 'GET':
+        return render_template('candidate/apply.html', position=position)
+
+    cover_letter = request.form.get('cover_letter', '').strip()
+    candidate = Candidate(
+        user_id=current_user.id,
+        position_id=position_id,
+        cover_letter=cover_letter or None,
+        source='website',
+    )
+    db.session.add(candidate)
+    db.session.flush()
+
+    resume = request.files.get('resume')
+    if resume and resume.filename:
+        ext = resume.filename.rsplit('.', 1)[-1].lower() if '.' in resume.filename else ''
+        stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+        attachment = FileAttachment(
+            filename=stored_name,
+            original_filename=resume.filename,
+            mime_type=resume.content_type,
+            file_size=0,
+            file_data=resume.read(),
+            uploaded_by=current_user.id,
+            attachment_type='resume',
+            attachment_id=candidate.id,
         )
-        db.session.add(candidate)
-        db.session.commit()
-        flash(f'Application submitted for {position.title}!', 'success')
+        attachment.file_size = len(attachment.file_data)
+        db.session.add(attachment)
+
+    db.session.commit()
+    flash(f'Application submitted for {position.title}!', 'success')
     return redirect(url_for('candidate.dashboard'))
 
 

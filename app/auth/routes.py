@@ -82,6 +82,44 @@ def register():
     return render_template('auth/register.html', role=role)
 
 
+@auth_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        current_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if name:
+            current_user.name = name
+        if email and email != current_user.email:
+            existing = User.query.filter(User.email == email, User.id != current_user.id).first()
+            if existing:
+                flash('Email already in use.', 'error')
+                return redirect(url_for('auth.profile'))
+            current_user.email = email
+
+        if new_password:
+            if not current_user.check_password(current_password):
+                flash('Current password is incorrect.', 'error')
+                return redirect(url_for('auth.profile'))
+            if new_password != confirm_password:
+                flash('New passwords do not match.', 'error')
+                return redirect(url_for('auth.profile'))
+            if len(new_password) < 8:
+                flash('Password must be at least 8 characters.', 'error')
+                return redirect(url_for('auth.profile'))
+            current_user.set_password(new_password)
+
+        db.session.commit()
+        flash('Profile updated.', 'success')
+        return redirect(url_for('auth.profile'))
+
+    return render_template('auth/profile.html')
+
+
 @auth_bp.route('/logout')
 @login_required
 def logout():

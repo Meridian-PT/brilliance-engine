@@ -1,0 +1,55 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Search Candidates — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Search Candidates</h1>
+        <p class="lead">{% if q %}{{ results|length }} result{{ 's' if results|length != 1 else '' }} for "{{ q }}"{% else %}Search your candidates{% endif %}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    {% if results %}
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            <table class="table table-be mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Position</th>
+                        <th>Stage</th>
+                        <th>Status</th>
+                        <th>Applied</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in results %}
+                    <tr>
+                        <td><a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}"><strong>{{ c.user.name }}</strong></a></td>
+                        <td>{{ c.position.title }}</td>
+                        <td><span class="badge-stage badge-{{ c.current_stage.split('_')[0] }}">{{ c.stage_display }}</span></td>
+                        <td><span class="text-capitalize">{{ c.status }}</span></td>
+                        <td>{{ c.applied_at.strftime('%b %d, %Y') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% elif q %}
+    <div class="content-card">
+        <div class="content-card-body text-center py-5" style="color: #6C757D;">
+            <i class="bi bi-search" style="font-size: 3rem;"></i>
+            <h4 class="mt-3">No candidates found</h4>
+            <p>Try a different search term.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

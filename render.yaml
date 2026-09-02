@@ -1,8 +1,14 @@
+databases:
+  - name: brilliance-db
+    plan: free
+    databaseName: brilliance
+    user: brilliance
+
 services:
   - type: web
     name: brilliance-engine
     runtime: python
-    buildCommand: pip install -r requirements.txt && mkdir -p instance
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn run:app --bind 0.0.0.0:$PORT
     envVars:
       - key: FLASK_CONFIG
@@ -11,3 +17,7 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.12.0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brilliance-db
+          property: connectionString

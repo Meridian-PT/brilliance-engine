@@ -1,0 +1,120 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Search — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Search</h1>
+        <p class="lead">{% if q %}{{ total }} result{{ 's' if total != 1 else '' }} for "{{ q }}"{% else %}Search across users, candidates, positions, and documents{% endif %}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    {% if results.users %}
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-people"></i> Users ({{ results.users|length }})</h3>
+        </div>
+        <div class="content-card-body p-0">
+            <table class="table table-be mb-0">
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+                <tbody>
+                    {% for u in results.users %}
+                    <tr>
+                        <td><strong>{{ u.name }}</strong></td>
+                        <td>{{ u.email }}</td>
+                        <td><span class="text-capitalize">{{ u.role }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if results.candidates %}
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-person-badge"></i> Candidates ({{ results.candidates|length }})</h3>
+        </div>
+        <div class="content-card-body p-0">
+            <table class="table table-be mb-0">
+                <thead><tr><th>Name</th><th>Position</th><th>Stage</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for c in results.candidates %}
+                    <tr>
+                        <td><a href="{{ url_for('manager.candidate_detail', candidate_id=c.id) }}"><strong>{{ c.user.name }}</strong></a></td>
+                        <td>{{ c.position.title }}</td>
+                        <td>{{ c.stage_display }}</td>
+                        <td><span class="text-capitalize">{{ c.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if results.positions %}
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-briefcase"></i> Positions ({{ results.positions|length }})</h3>
+        </div>
+        <div class="content-card-body p-0">
+            <table class="table table-be mb-0">
+                <thead><tr><th>Title</th><th>Department</th><th>Status</th></tr></thead>
+                <tbody>
+                    {% for p in results.positions %}
+                    <tr>
+                        <td><strong>{{ p.title }}</strong></td>
+                        <td>{{ p.department or '—' }}</td>
+                        <td><span class="text-capitalize">{{ p.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if results.documents %}
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-folder"></i> Documents ({{ results.documents|length }})</h3>
+        </div>
+        <div class="content-card-body p-0">
+            <table class="table table-be mb-0">
+                <thead><tr><th>Title</th><th>Category</th><th>Type</th></tr></thead>
+                <tbody>
+                    {% for d in results.documents %}
+                    <tr>
+                        <td><strong>{{ d.title }}</strong></td>
+                        <td><span class="text-capitalize">{{ d.category or '—' }}</span></td>
+                        <td>{{ d.file_type or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if q and total == 0 %}
+    <div class="content-card">
+        <div class="content-card-body text-center py-5" style="color: #6C757D;">
+            <i class="bi bi-search" style="font-size: 3rem;"></i>
+            <h4 class="mt-3">No results found</h4>
+            <p>Try a different search term.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

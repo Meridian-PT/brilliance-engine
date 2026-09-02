@@ -28,12 +28,14 @@ def create_app(config_name='default'):
     from app.newhire.routes import newhire_bp
     from app.manager.routes import manager_bp
     from app.admin.routes import admin_bp
+    from app.files.routes import files_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(candidate_bp, url_prefix='/candidate')
     app.register_blueprint(newhire_bp, url_prefix='/newhire')
     app.register_blueprint(manager_bp, url_prefix='/manager')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(files_bp)
 
     from app.models import User
 

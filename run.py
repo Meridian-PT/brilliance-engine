@@ -9,7 +9,7 @@ from datetime import date, datetime, timezone
 os.makedirs(os.path.join(os.path.dirname(__file__), 'instance'), exist_ok=True)
 
 from app import create_app, db
-from app.models import User, Position, Candidate, Document, NewHire, OnboardingTask
+from app.models import User, Position, Candidate, Document, NewHire, OnboardingTask, FileAttachment, CandidateNote
 
 
 app = create_app(os.environ.get('FLASK_CONFIG', 'default'))

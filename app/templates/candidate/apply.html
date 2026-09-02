@@ -1,0 +1,81 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Apply — {{ position.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('candidate.culture') }}"><i class="bi bi-heart"></i> Our Culture</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Apply: {{ position.title }}</h1>
+        <p class="lead">{{ position.department or 'General' }} &middot; {{ position.location or 'Remote' }} &middot; {{ position.employment_type }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-send"></i> Your Application</h3>
+                </div>
+                <div class="content-card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="mb-3">
+                            <label class="form-label">Cover Letter (optional)</label>
+                            <textarea name="cover_letter" class="form-control" rows="6"
+                                      placeholder="Tell us why you're interested in this role and what makes you a great fit..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Resume (optional)</label>
+                            <input type="file" name="resume" class="form-control"
+                                   accept=".pdf,.doc,.docx,.txt,.rtf">
+                            <div class="form-text">PDF, Word, or text files up to 10MB.</div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-be">
+                                <i class="bi bi-send"></i> Submit Application
+                            </button>
+                            <a href="{{ url_for('candidate.dashboard') }}" class="btn btn-be-outline">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-briefcase"></i> Position Details</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="mb-2"><strong>Title:</strong> {{ position.title }}</div>
+                    <div class="mb-2"><strong>Department:</strong> {{ position.department or 'General' }}</div>
+                    <div class="mb-2"><strong>Location:</strong> {{ position.location or 'Remote' }}</div>
+                    <div class="mb-2"><strong>Type:</strong> {{ position.employment_type }}</div>
+                    {% if position.salary_range_low and position.salary_range_high %}
+                    <div class="mb-2" style="color: #27AE60; font-weight: 600;">
+                        ${{ "{:,}".format(position.salary_range_low) }} — ${{ "{:,}".format(position.salary_range_high) }}
+                    </div>
+                    {% endif %}
+                    {% if position.description %}
+                    <hr>
+                    <p style="font-size: 0.9rem; color: #555;">{{ position.description }}</p>
+                    {% endif %}
+                    {% if position.requirements %}
+                    <hr>
+                    <div style="font-size: 0.9rem;"><strong>Requirements:</strong></div>
+                    <p style="font-size: 0.85rem; color: #555;">{{ position.requirements }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

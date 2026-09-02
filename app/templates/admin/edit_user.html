@@ -1,0 +1,58 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Edit User — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Edit User: {{ user.name }}</h1>
+        <p class="lead">{{ user.email }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card" style="max-width: 600px;">
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ user.name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ user.email }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Role</label>
+                    <select name="role" class="form-select">
+                        {% for r in ['candidate', 'newhire', 'manager', 'admin'] %}
+                        <option value="{{ r }}" {% if user.role == r %}selected{% endif %}>{{ r|capitalize }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">New Password (leave blank to keep current)</label>
+                    <input type="password" name="password" class="form-control" minlength="8">
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-be"><i class="bi bi-check"></i> Save Changes</button>
+                    <a href="{{ url_for('admin.users') }}" class="btn btn-be-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
