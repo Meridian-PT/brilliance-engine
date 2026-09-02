@@ -4,6 +4,9 @@
 import os
 import sys
 
+# Ensure instance directory exists for SQLite
+os.makedirs(os.path.join(os.path.dirname(__file__), 'instance'), exist_ok=True)
+
 from app import create_app, db
 from app.models import User, Position, Candidate, Document, NewHire, OnboardingTask
 

@@ -2,7 +2,7 @@ services:
   - type: web
     name: brilliance-engine
     runtime: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && mkdir -p instance
     startCommand: gunicorn run:app --bind 0.0.0.0:$PORT
     envVars:
       - key: FLASK_CONFIG
