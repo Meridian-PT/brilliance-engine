@@ -3,6 +3,7 @@
 
 import os
 import sys
+from datetime import date, datetime, timezone
 
 # Ensure instance directory exists for SQLite
 os.makedirs(os.path.join(os.path.dirname(__file__), 'instance'), exist_ok=True)
@@ -160,9 +161,73 @@ def seed_database():
         )
         db.session.add(doc)
 
+    # ── Demo New Hire (to showcase onboarding portal) ──
+    newhire_user = User(name='Alex Rivera', email='alex.rivera@puretechnology.nyc', role='newhire')
+    newhire_user.set_password('brilliance2026')
+    db.session.add(newhire_user)
+    db.session.flush()
+
+    newhire = NewHire(
+        user_id=newhire_user.id,
+        position_id=positions[0].id,
+        start_date=date.today(),
+        buddy_id=mireille.id,
+        manager_id=jared.id,
+        department='Engineering',
+        onboarding_status='week_1',
+    )
+    db.session.add(newhire)
+    db.session.commit()
+
+    # Create onboarding tasks for demo new hire
+    _seed_onboarding_tasks(newhire.id)
+
     db.session.commit()
     print(f"Seeded: {User.query.count()} users, {Position.query.count()} positions, "
-          f"{Candidate.query.count()} candidates, {Document.query.count()} documents")
+          f"{Candidate.query.count()} candidates, {Document.query.count()} documents, "
+          f"1 new hire with onboarding tasks")
+
+
+def _seed_onboarding_tasks(new_hire_id):
+    """Create Pure Start onboarding tasks for demo new hire."""
+    tasks = [
+        ('Sign offer letter and employment agreement', 'pre_start', -5, 'newhire'),
+        ('Complete background check authorization', 'pre_start', -5, 'newhire'),
+        ('Set up IT accounts (email, Slack, tools)', 'pre_start', -2, 'it'),
+        ('Prepare welcome package and swag', 'pre_start', -1, 'hr'),
+        ('Assign onboarding buddy', 'pre_start', -1, 'hr'),
+        ('Welcome meeting with manager', 'day_1', 0, 'manager'),
+        ('Read the Culture Card', 'day_1', 0, 'newhire'),
+        ('Watch the Welcome Video', 'day_1', 0, 'newhire'),
+        ('Meet your onboarding buddy', 'day_1', 0, 'buddy'),
+        ('Complete IT setup and tool access', 'day_1', 0, 'newhire'),
+        ('Read the Employee Handbook', 'day_1', 0, 'newhire'),
+        ('Team introductions (all departments)', 'week_1', 3, 'manager'),
+        ('Review role expectations and KPIs', 'week_1', 3, 'manager'),
+        ('Complete mandatory compliance training', 'week_1', 5, 'newhire'),
+        ('Shadow key team members', 'week_1', 5, 'newhire'),
+        ('End-of-week check-in with manager', 'week_1', 5, 'manager'),
+        ('30-day check-in with manager', 'day_30', 30, 'manager'),
+        ('Self-assessment: How am I doing?', 'day_30', 30, 'newhire'),
+        ('Buddy check-in', 'day_30', 30, 'buddy'),
+        ('Complete all initial training modules', 'day_30', 30, 'newhire'),
+        ('60-day performance check-in', 'day_60', 60, 'manager'),
+        ('Begin independent project work', 'day_60', 60, 'newhire'),
+        ('Feedback session: What can we improve?', 'day_60', 60, 'newhire'),
+        ('90-day formal review', 'day_90', 90, 'manager'),
+        ('Probation review (if applicable)', 'day_90', 90, 'hr'),
+        ('Set goals for next quarter', 'day_90', 90, 'manager'),
+        ('Onboarding complete celebration', 'day_90', 90, 'hr'),
+    ]
+    # Mark pre-start tasks as completed for demo
+    for title, category, due_day, assigned_to in tasks:
+        task = OnboardingTask(
+            new_hire_id=new_hire_id, title=title, category=category,
+            due_day=due_day, assigned_to=assigned_to,
+            completed=(category == 'pre_start'),
+            completed_at=datetime.now(timezone.utc) if category == 'pre_start' else None,
+        )
+        db.session.add(task)
 
 
 with app.app_context():
