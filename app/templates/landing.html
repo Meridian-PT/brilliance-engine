@@ -8,7 +8,7 @@
         <div class="landing-tagline">Where people actualize their brilliance</div>
         <div class="landing-company">Pure Technology</div>
 
-        <div class="landing-cards">
+        <div class="landing-cards" style="grid-template-columns: 1fr 1fr 1fr; max-width: 750px;">
             <a href="{{ url_for('auth.login', role='candidate') }}" class="landing-card">
                 <div class="landing-card-icon"><i class="bi bi-person-plus"></i></div>
                 <div class="landing-card-title">I'm a Candidate</div>
@@ -19,6 +19,12 @@
                 <div class="landing-card-icon"><i class="bi bi-rocket-takeoff"></i></div>
                 <div class="landing-card-title">I'm a New Hire</div>
                 <div class="landing-card-desc">Welcome aboard — your onboarding journey starts here</div>
+            </a>
+
+            <a href="{{ url_for('auth.login', role='employee') }}" class="landing-card">
+                <div class="landing-card-icon"><i class="bi bi-person-badge"></i></div>
+                <div class="landing-card-title">Current Employee</div>
+                <div class="landing-card-desc">Policies, training, time off, performance reviews, and more</div>
             </a>
 
             <a href="{{ url_for('auth.login', role='manager') }}" class="landing-card">

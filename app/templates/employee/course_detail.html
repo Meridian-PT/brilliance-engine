@@ -1,0 +1,109 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ course.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('employee.training') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Training
+    </a>
+
+    <div class="row g-4 mt-2">
+        <!-- Course Info -->
+        <div class="col-md-8">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3>{{ course.title }}</h3>
+                    {% if course_completed %}
+                    <span class="badge-stage" style="background: rgba(39,174,96,0.15); color: #2ecc71;">
+                        <i class="bi bi-trophy"></i> Completed
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="content-card-body">
+                    <p style="color: var(--text-muted);">{{ course.description }}</p>
+
+                    <div class="mb-3" style="font-size: 0.85rem; color: var(--text-muted);">
+                        <span class="badge-stage" style="background: rgba(42,147,193,0.1); color: var(--blue);">{{ course.category|title }}</span>
+                        {% if course.is_required %}
+                        <span class="badge-stage ms-1" style="background: rgba(241,66,11,0.15); color: #f1420b;">Required</span>
+                        {% endif %}
+                        <span class="ms-2"><i class="bi bi-clock"></i> {{ course.estimated_hours }} hours estimated</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="flex-grow-1">
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar" style="width: {{ progress }}%; background: {{ 'var(--success)' if progress == 100 else 'var(--blue)' }};"></div>
+                            </div>
+                        </div>
+                        <strong style="min-width: 45px;">{{ progress }}%</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modules List -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-list-ol"></i> Modules</h3>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">{{ completed_ids|length }}/{{ modules|length }}</span>
+                </div>
+                <div class="content-card-body p-0">
+                    {% for module in modules %}
+                    <a href="{{ url_for('employee.module_viewer', course_id=course.id, module_id=module.id) }}"
+                       class="d-flex align-items-center text-decoration-none" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); transition: background 0.2s; color: var(--text);"
+                       onmouseover="this.style.background='rgba(42,147,193,0.05)'" onmouseout="this.style.background='transparent'">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 1rem;
+                            {% if module.id in completed_ids %}background: var(--success); color: white;
+                            {% else %}background: var(--bg-panel-alt); border: 2px solid var(--border); color: var(--text-muted);{% endif %}">
+                            {% if module.id in completed_ids %}
+                            <i class="bi bi-check" style="font-size: 1rem;"></i>
+                            {% else %}
+                            <span style="font-size: 0.8rem; font-weight: 600;">{{ loop.index }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div style="font-weight: 500;">{{ module.title }}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                {% set type_icons = {'text': 'bi-journal-text', 'video': 'bi-play-circle', 'interactive': 'bi-lightbulb', 'quiz': 'bi-question-circle'} %}
+                                <i class="{{ type_icons.get(module.content_type, 'bi-journal-text') }}"></i>
+                                {{ module.content_type|title }} — {{ module.duration_minutes }} min
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <div class="stat-card text-center mb-3">
+                <div style="font-size: 3rem; font-weight: 800; color: {{ 'var(--success)' if progress == 100 else 'var(--blue)' }};">
+                    {{ progress }}%
+                </div>
+                <div class="stat-label">Progress</div>
+            </div>
+
+            {% if modules and not course_completed %}
+            {% set first_incomplete = none %}
+            {% for m in modules %}
+                {% if m.id not in completed_ids and not first_incomplete %}
+                    {% set first_incomplete = m %}
+                {% endif %}
+            {% endfor %}
+            {% if first_incomplete %}
+            <a href="{{ url_for('employee.module_viewer', course_id=course.id, module_id=first_incomplete.id) }}" class="btn btn-be-gold w-100 mb-3">
+                <i class="bi bi-play-circle"></i> {{ 'Continue' if progress > 0 else 'Start' }} Course
+            </a>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

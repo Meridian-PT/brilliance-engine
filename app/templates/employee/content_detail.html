@@ -1,0 +1,54 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ document.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('employee.content_library') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Library
+    </a>
+
+    <div class="content-card mt-3">
+        <div class="content-card-header">
+            <h3>{{ document.title }}</h3>
+        </div>
+        <div class="content-card-body">
+            <div class="row mb-3" style="font-size: 0.85rem; color: var(--text-muted);">
+                <div class="col-md-3"><strong>Category:</strong> {{ document.category|title if document.category else '—' }}</div>
+                <div class="col-md-3"><strong>Type:</strong> {{ document.file_type|upper if document.file_type else '—' }}</div>
+                <div class="col-md-3"><strong>Origin:</strong> {{ document.origin|title if document.origin else '—' }}</div>
+                <div class="col-md-3"><strong>Template:</strong> {{ 'Yes' if document.is_template else 'No' }}</div>
+            </div>
+            {% if document.description %}
+            <p style="color: var(--text); line-height: 1.6;">{{ document.description }}</p>
+            {% endif %}
+
+            {% if attachment %}
+            <div style="margin-top: 1.5rem; padding: 1.25rem; background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius);">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <i class="bi bi-file-earmark" style="color: var(--blue);"></i>
+                        <span style="font-weight: 500;">{{ attachment.original_filename }}</span>
+                        <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 0.5rem;">
+                            ({{ (attachment.file_size / 1024)|round(1) }} KB)
+                        </span>
+                    </div>
+                    <a href="{{ url_for('files.download_file', file_id=attachment.id) }}" class="btn btn-sm btn-be">
+                        <i class="bi bi-download"></i> Download
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

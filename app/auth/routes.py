@@ -38,6 +38,7 @@ def login():
     role_labels = {
         'candidate': ('Candidate Portal', 'Track your application and get to know us'),
         'newhire': ('New Hire Portal', 'Your onboarding journey starts here'),
+        'employee': ('Employee Hub', 'Policies, training, time off, performance, and more'),
         'manager': ('Hiring Manager Portal', 'Manage your pipeline and build your team'),
         'admin': ('HR Admin Portal', 'Full system access'),
     }

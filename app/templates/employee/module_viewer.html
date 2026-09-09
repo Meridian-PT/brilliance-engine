@@ -1,0 +1,74 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ module.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a href="{{ url_for('employee.course_detail', course_id=course.id) }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+            <i class="bi bi-arrow-left"></i> {{ course.title }}
+        </a>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Module {{ current_num }} of {{ total_modules }}</span>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress mb-4" style="height: 4px;">
+        <div class="progress-bar" style="width: {{ (current_num / total_modules * 100)|int }}%;"></div>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3>
+                {% set type_icons = {'text': 'bi-journal-text', 'video': 'bi-play-circle', 'interactive': 'bi-lightbulb', 'quiz': 'bi-question-circle'} %}
+                <i class="{{ type_icons.get(module.content_type, 'bi-journal-text') }}" style="color: var(--orange);"></i>
+                {{ module.title }}
+            </h3>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                <i class="bi bi-clock"></i> {{ module.duration_minutes }} min
+                {% if is_completed %}
+                <span class="ms-2" style="color: var(--success);"><i class="bi bi-check-circle-fill"></i> Completed</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="content-card-body">
+            <div style="line-height: 1.8; color: var(--text);">
+                {{ module.content|safe }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
+        <div>
+            {% if prev_module %}
+            <a href="{{ url_for('employee.module_viewer', course_id=course.id, module_id=prev_module.id) }}" class="btn btn-be-outline">
+                <i class="bi bi-arrow-left"></i> Previous
+            </a>
+            {% endif %}
+        </div>
+
+        <div>
+            {% if not is_completed %}
+            <form method="POST" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-be-gold">
+                    <i class="bi bi-check-circle"></i> Mark Complete{% if next_module %} & Next{% endif %}
+                </button>
+            </form>
+            {% elif next_module %}
+            <a href="{{ url_for('employee.module_viewer', course_id=course.id, module_id=next_module.id) }}" class="btn btn-be">
+                Next <i class="bi bi-arrow-right"></i>
+            </a>
+            {% else %}
+            <a href="{{ url_for('employee.course_detail', course_id=course.id) }}" class="btn btn-be">
+                <i class="bi bi-check-all"></i> Finish Course
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

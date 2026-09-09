@@ -1,0 +1,113 @@
+{% extends "dashboard_base.html" %}
+{% block title %}My Profile — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>My Profile</h1>
+        <p class="lead">Your employee information</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <!-- Profile Card -->
+        <div class="col-md-4">
+            <div class="content-card">
+                <div class="content-card-body text-center">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--orange)); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; font-weight: 700; color: white;">
+                        {{ current_user.name[0] }}
+                    </div>
+                    <h4 style="margin-bottom: 0.25rem;">{{ current_user.name }}</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">{{ current_user.email }}</p>
+
+                    {% if profile %}
+                    {% if profile.title %}<div style="color: var(--blue); font-weight: 600;">{{ profile.title }}</div>{% endif %}
+                    {% if profile.department %}<div style="color: var(--text-muted); font-size: 0.9rem;">{{ profile.department }}</div>{% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="col-md-8">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-person-badge"></i> Employee Details</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if profile %}
+                    <div class="row g-3" style="font-size: 0.9rem;">
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Employee Number</div>
+                            <div style="font-weight: 500;">{{ profile.employee_number or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Start Date</div>
+                            <div style="font-weight: 500;">{{ profile.start_date.strftime('%B %d, %Y') if profile.start_date else '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Department</div>
+                            <div style="font-weight: 500;">{{ profile.department or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Manager</div>
+                            <div style="font-weight: 500;">{{ profile.manager.name if profile.manager else '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Phone</div>
+                            <div style="font-weight: 500;">{{ profile.phone or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Role</div>
+                            <div style="font-weight: 500; text-transform: capitalize;">{{ current_user.role }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted);">Profile not yet set up. Contact HR.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Emergency Contact + Edit -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-telephone"></i> Contact Info</h3>
+                </div>
+                <div class="content-card-body">
+                    <form method="POST" action="{{ url_for('employee.edit_profile') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Phone</label>
+                                <input type="text" name="phone" class="form-control" value="{{ profile.phone if profile and profile.phone else '' }}" placeholder="(555) 123-4567">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Emergency Contact</label>
+                                <input type="text" name="emergency_contact_name" class="form-control" value="{{ profile.emergency_contact_name if profile and profile.emergency_contact_name else '' }}" placeholder="Full name">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Emergency Phone</label>
+                                <input type="text" name="emergency_contact_phone" class="form-control" value="{{ profile.emergency_contact_phone if profile and profile.emergency_contact_phone else '' }}" placeholder="(555) 123-4567">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-be mt-3">
+                            <i class="bi bi-save"></i> Update Contact Info
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

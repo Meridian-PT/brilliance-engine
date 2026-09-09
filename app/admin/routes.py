@@ -5,7 +5,10 @@ from datetime import datetime, date, timezone
 from app import db
 from app.models import (User, Candidate, Position, Interview, Scorecard,
                          NewHire, OnboardingTask, Document, FileAttachment,
-                         PIPELINE_STAGES)
+                         PIPELINE_STAGES, EmployeeProfile, Policy,
+                         PolicyAcknowledgment, TrainingCourse, TrainingCompletion,
+                         AssessmentTemplate, AssessmentResult, PTOBalance,
+                         PTORequest, ReviewCycle, PerformanceReview)
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
@@ -395,3 +398,100 @@ def _create_default_tasks(new_hire_id):
         db.session.add(task)
 
     db.session.commit()
+
+
+# ── Employee Management ─────────────────────────────────────────────────────
+
+@admin_bp.route('/promote-to-employee/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def promote_to_employee(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.role not in ('newhire', 'candidate'):
+        flash(f'{user.name} cannot be promoted to employee from role "{user.role}".', 'error')
+        return redirect(url_for('admin.users'))
+
+    profile = EmployeeProfile.query.filter_by(user_id=user.id).first()
+    if not profile:
+        newhire = NewHire.query.filter_by(user_id=user.id).first()
+        profile = EmployeeProfile(
+            user_id=user.id,
+            department=newhire.department if newhire else '',
+            start_date=newhire.start_date if newhire else date.today(),
+            manager_id=newhire.manager_id if newhire else None,
+            employee_number=f'PT-{1000 + user.id}',
+        )
+        if newhire and newhire.position:
+            profile.title = newhire.position.title
+        db.session.add(profile)
+
+    user.role = 'employee'
+    db.session.commit()
+    flash(f'{user.name} promoted to employee.', 'success')
+    return redirect(url_for('admin.users'))
+
+
+@admin_bp.route('/employee-reports')
+@login_required
+@admin_required
+def employee_reports():
+    employees = User.query.filter_by(role='employee').all()
+    employee_count = len(employees)
+
+    policy_ack_data = []
+    for policy in Policy.query.filter_by(is_active=True, requires_acknowledgment=True).all():
+        ack_count = PolicyAcknowledgment.query.filter_by(policy_id=policy.id).count()
+        policy_ack_data.append({
+            'title': policy.title,
+            'acknowledged': ack_count,
+            'total': employee_count,
+            'pct': int(ack_count / employee_count * 100) if employee_count else 0,
+        })
+
+    training_data = []
+    for course in TrainingCourse.query.filter_by(is_active=True).all():
+        completed = TrainingCompletion.query.filter_by(
+            course_id=course.id, module_id=None).count()
+        training_data.append({
+            'title': course.title,
+            'required': course.is_required,
+            'completed': completed,
+            'total': employee_count,
+            'pct': int(completed / employee_count * 100) if employee_count else 0,
+        })
+
+    assessment_data = []
+    for tmpl in AssessmentTemplate.query.filter_by(is_active=True).all():
+        taken = AssessmentResult.query.filter_by(template_id=tmpl.id).count()
+        passed = AssessmentResult.query.filter_by(template_id=tmpl.id, passed=True).count()
+        assessment_data.append({
+            'title': tmpl.title,
+            'taken': taken,
+            'passed': passed,
+            'pass_rate': int(passed / taken * 100) if taken else 0,
+        })
+
+    pending_pto = PTORequest.query.filter_by(status='pending').count()
+    approved_pto = PTORequest.query.filter_by(status='approved').count()
+
+    active_cycles = ReviewCycle.query.filter_by(status='active').all()
+    cycle_data = []
+    for cycle in active_cycles:
+        total_reviews = cycle.reviews.count()
+        completed = cycle.reviews.filter_by(status='complete').count()
+        cycle_data.append({
+            'title': cycle.title,
+            'total': total_reviews,
+            'completed': completed,
+            'pending_self': cycle.reviews.filter_by(status='pending_self').count(),
+            'pending_manager': cycle.reviews.filter_by(status='pending_manager').count(),
+        })
+
+    return render_template('admin/employee_reports.html',
+                           employee_count=employee_count,
+                           policy_ack_data=policy_ack_data,
+                           training_data=training_data,
+                           assessment_data=assessment_data,
+                           pending_pto=pending_pto,
+                           approved_pto=approved_pto,
+                           cycle_data=cycle_data)

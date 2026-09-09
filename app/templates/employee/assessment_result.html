@@ -1,0 +1,75 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Assessment Results — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('employee.assessments') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Assessments
+    </a>
+
+    <!-- Score Summary -->
+    <div class="content-card mt-3">
+        <div class="content-card-body text-center py-4">
+            <div style="font-size: 4rem; font-weight: 800; color: {{ 'var(--success)' if result.passed else 'var(--danger)' }};">
+                {{ result.score|int }}%
+            </div>
+            <div style="font-size: 1.2rem; font-weight: 600; margin-top: 0.5rem;">
+                {% if result.passed %}
+                <span style="color: var(--success);"><i class="bi bi-check-circle-fill"></i> Passed</span>
+                {% else %}
+                <span style="color: var(--danger);"><i class="bi bi-x-circle-fill"></i> Not Passed</span>
+                {% endif %}
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+                {{ result.template.title }} — Attempt #{{ result.attempt_number }}
+                <br>Passing score: {{ result.template.passing_score }}%
+                <br>Completed: {{ result.completed_at.strftime('%B %d, %Y at %I:%M %p') }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Question Review -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-list-check"></i> Question Review</h3>
+        </div>
+        <div class="content-card-body">
+            {% for q in questions %}
+            {% set user_answer = answers.get(loop.index0|string, '') %}
+            {% set is_correct = q.get('correct') and user_answer == q['correct'] %}
+            <div style="background: var(--bg-panel-alt); border: 1px solid {{ 'rgba(39,174,96,0.3)' if is_correct else 'rgba(231,76,60,0.2)' }}; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 0.75rem;">
+                <div class="d-flex justify-content-between">
+                    <strong>{{ loop.index }}. {{ q.question }}</strong>
+                    {% if is_correct %}
+                    <i class="bi bi-check-circle-fill" style="color: var(--success);"></i>
+                    {% else %}
+                    <i class="bi bi-x-circle-fill" style="color: var(--danger);"></i>
+                    {% endif %}
+                </div>
+                <div style="font-size: 0.9rem; margin-top: 0.5rem;">
+                    <span style="color: var(--text-muted);">Your answer:</span>
+                    <span style="color: {{ 'var(--success)' if is_correct else 'var(--danger)' }};">{{ user_answer or 'No answer' }}</span>
+                </div>
+                {% if not is_correct and q.get('correct') %}
+                <div style="font-size: 0.9rem; margin-top: 0.25rem;">
+                    <span style="color: var(--text-muted);">Correct:</span>
+                    <span style="color: var(--success);">{{ q['correct'] }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="text-center mt-3 mb-4">
+        <a href="{{ url_for('employee.take_assessment', template_id=result.template_id) }}" class="btn btn-be">
+            <i class="bi bi-arrow-repeat"></i> Retake Assessment
+        </a>
+    </div>
+</div>
+{% endblock %}

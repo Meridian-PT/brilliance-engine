@@ -1,0 +1,78 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Assessments — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Assessments</h1>
+        <p class="lead">Skills, competency, and compliance evaluations</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-3">
+        {% for template in templates %}
+        <div class="col-md-4">
+            <div class="content-card" style="height: 100%;">
+                <div class="content-card-header">
+                    <h3>{{ template.title }}</h3>
+                    <span class="badge-stage" style="background: rgba(42,147,193,0.15); color: #5dbde3;">{{ template.category|title }}</span>
+                </div>
+                <div class="content-card-body d-flex flex-column">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; flex-grow: 1;">{{ template.description }}</p>
+
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        <i class="bi bi-clock"></i> {{ template.time_limit_minutes }} min
+                        <span class="mx-2">|</span>
+                        <i class="bi bi-check-circle"></i> {{ template.passing_score }}% to pass
+                        <span class="mx-2">|</span>
+                        {{ template.get_questions()|length }} questions
+                    </div>
+
+                    {% if template.id in results %}
+                    {% set r = results[template.id] %}
+                    <div style="background: var(--bg-panel-alt); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 1rem;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size: 0.85rem;">Last Score: <strong style="color: {{ 'var(--success)' if r.passed else 'var(--danger)' }};">{{ r.score|int }}%</strong></span>
+                            <span class="badge-stage" style="background: {{ 'rgba(39,174,96,0.15)' if r.passed else 'rgba(231,76,60,0.15)' }}; color: {{ '#2ecc71' if r.passed else '#e74c3c' }};">
+                                {{ 'Passed' if r.passed else 'Not Passed' }}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            Attempt #{{ r.attempt_number }} — {{ r.completed_at.strftime('%b %d, %Y') }}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('employee.assessment_result', result_id=r.id) }}" class="btn btn-sm btn-be-outline flex-grow-1">View Results</a>
+                        <a href="{{ url_for('employee.take_assessment', template_id=template.id) }}" class="btn btn-sm btn-be flex-grow-1">Retake</a>
+                    </div>
+                    {% else %}
+                    <a href="{{ url_for('employee.take_assessment', template_id=template.id) }}" class="btn btn-be w-100">
+                        <i class="bi bi-play-circle"></i> Start Assessment
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="content-card">
+                <div class="content-card-body text-center py-4" style="color: var(--text-muted);">
+                    No assessments available at this time.
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

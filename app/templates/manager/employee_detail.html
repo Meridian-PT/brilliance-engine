@@ -1,0 +1,170 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ profile.user.name }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('manager.employees') }}"><i class="bi bi-people"></i> My Team</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('manager.employees') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Team
+    </a>
+
+    <!-- Employee Header -->
+    <div class="content-card mt-3">
+        <div class="content-card-body">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--orange)); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: white;">
+                    {{ profile.user.name[0] }}
+                </div>
+                <div>
+                    <h3 style="margin: 0;">{{ profile.user.name }}</h3>
+                    <div style="color: var(--blue);">{{ profile.title or 'No title' }}</div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem;">
+                        {{ profile.department or '' }}
+                        {% if profile.employee_number %} | {{ profile.employee_number }}{% endif %}
+                        {% if profile.start_date %} | Started {{ profile.start_date.strftime('%b %d, %Y') }}{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <!-- Stats -->
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="stat-value">{{ completions }}</div>
+                <div class="stat-label">Trainings Completed</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="stat-value">{{ pto_requests|selectattr('status', 'eq', 'pending')|list|length }}</div>
+                <div class="stat-label">Pending PTO Requests</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card text-center">
+                <div class="stat-value">{{ reviews|selectattr('status', 'eq', 'pending_manager')|list|length }}</div>
+                <div class="stat-label">Reviews Needing Your Input</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <!-- PTO Requests -->
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-calendar2-heart"></i> PTO Requests</h3>
+                </div>
+                <div class="content-card-body p-0">
+                    {% if pto_requests %}
+                    <table class="table table-be mb-0">
+                        <thead><tr><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th></th></tr></thead>
+                        <tbody>
+                            {% for req in pto_requests %}
+                            <tr>
+                                <td style="text-transform: capitalize;">{{ req.leave_type }}</td>
+                                <td>{{ req.start_date.strftime('%b %d') }} - {{ req.end_date.strftime('%b %d') }}</td>
+                                <td>{{ req.days_requested|int }}</td>
+                                <td>
+                                    {% if req.status == 'approved' %}
+                                    <span style="color: var(--success);">Approved</span>
+                                    {% elif req.status == 'denied' %}
+                                    <span style="color: var(--danger);">Denied</span>
+                                    {% else %}
+                                    <span style="color: var(--warning);">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if req.status == 'pending' %}
+                                    <div class="d-flex gap-1">
+                                        <form method="POST" action="{{ url_for('manager.review_pto', request_id=req.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="action" value="approve">
+                                            <button class="btn btn-sm" style="background: var(--success); color: white; padding: 0.2rem 0.5rem;"><i class="bi bi-check"></i></button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('manager.review_pto', request_id=req.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="action" value="deny">
+                                            <button class="btn btn-sm" style="background: var(--danger); color: white; padding: 0.2rem 0.5rem;"><i class="bi bi-x"></i></button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center py-3" style="color: var(--text-muted);">No PTO requests.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Reviews -->
+        <div class="col-md-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-graph-up"></i> Performance Reviews</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if reviews %}
+                    {% for review in reviews %}
+                    <div style="background: var(--bg-panel-alt); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ review.cycle.title }}</strong>
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                    Self: {{ review.self_rating or '—' }}/5 | Manager: {{ review.manager_rating or '—' }}/5
+                                </div>
+                            </div>
+                            {% if review.status == 'pending_manager' %}
+                            <span class="badge-stage" style="background: rgba(241,66,11,0.15); color: #f1420b;">Needs Your Review</span>
+                            {% elif review.status == 'complete' %}
+                            <span class="badge-stage" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Complete</span>
+                            {% else %}
+                            <span class="badge-stage" style="background: rgba(243,156,18,0.15); color: #f1c40f;">Pending Self</span>
+                            {% endif %}
+                        </div>
+                        {% if review.status == 'pending_manager' %}
+                        <form method="POST" action="{{ url_for('manager.manager_review', review_id=review.id) }}" class="mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <select name="manager_rating" class="form-select form-select-sm" required>
+                                        <option value="">Rating</option>
+                                        {% for i in range(1, 6) %}
+                                        <option value="{{ i }}">{{ i }}/5</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <textarea name="manager_comments" class="form-control form-control-sm" rows="1" placeholder="Manager comments..."></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-be-gold mt-2">Submit Review</button>
+                        </form>
+                        {% endif %}
+                        {% if review.self_comments %}
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-dim); border-left: 2px solid var(--border); padding-left: 0.75rem;">
+                            {{ review.self_comments[:200] }}{{ '...' if review.self_comments|length > 200 }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: var(--text-muted);">No reviews yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

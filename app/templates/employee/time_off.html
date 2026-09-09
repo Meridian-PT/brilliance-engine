@@ -1,0 +1,126 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Time Off — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Time Off</h1>
+        <p class="lead">Manage your leave and PTO balances</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Balances -->
+    {% if pto %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--blue);">{{ pto.vacation_remaining|int }}</div>
+                <div class="stat-label">Vacation Days Left</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    {{ pto.vacation_used|int }} used of {{ pto.vacation_total|int }}
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{ (pto.vacation_used / pto.vacation_total * 100)|int if pto.vacation_total else 0 }}%;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--success);">{{ pto.sick_remaining|int }}</div>
+                <div class="stat-label">Sick Days Left</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    {{ pto.sick_used|int }} used of {{ pto.sick_total|int }}
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{ (pto.sick_used / pto.sick_total * 100)|int if pto.sick_total else 0 }}%; background: var(--success);"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value" style="color: var(--warning);">{{ pto.personal_remaining|int }}</div>
+                <div class="stat-label">Personal Days Left</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    {{ pto.personal_used|int }} used of {{ pto.personal_total|int }}
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{ (pto.personal_used / pto.personal_total * 100)|int if pto.personal_total else 0 }}%; background: var(--warning);"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center d-flex flex-column justify-content-center">
+                <div class="stat-value" style="color: var(--orange);">{{ pto.total_remaining|int }}</div>
+                <div class="stat-label">Total Days Remaining</div>
+                <a href="{{ url_for('employee.request_time_off') }}" class="btn btn-sm btn-be-gold mt-2">
+                    <i class="bi bi-plus-circle"></i> Request Time Off
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="content-card mb-4">
+        <div class="content-card-body text-center py-3">
+            <p style="color: var(--text-muted); margin: 0;">PTO balances not yet set up. Contact HR.</p>
+            <a href="{{ url_for('employee.request_time_off') }}" class="btn btn-sm btn-be-gold mt-2">
+                <i class="bi bi-plus-circle"></i> Request Time Off
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Request History -->
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-clock-history"></i> Request History</h3>
+        </div>
+        <div class="content-card-body p-0">
+            {% if requests %}
+            <table class="table table-be mb-0">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in requests %}
+                    <tr>
+                        <td><span style="text-transform: capitalize;">{{ req.leave_type }}</span></td>
+                        <td>{{ req.start_date.strftime('%b %d') }} — {{ req.end_date.strftime('%b %d, %Y') }}</td>
+                        <td>{{ req.days_requested|int }}</td>
+                        <td>
+                            {% if req.status == 'approved' %}
+                            <span class="badge-stage" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Approved</span>
+                            {% elif req.status == 'denied' %}
+                            <span class="badge-stage" style="background: rgba(231,76,60,0.15); color: #e74c3c;">Denied</span>
+                            {% else %}
+                            <span class="badge-stage" style="background: rgba(243,156,18,0.15); color: #f1c40f;">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ req.created_at.strftime('%b %d, %Y') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-3" style="color: var(--text-muted);">No time off requests yet.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ policy.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('employee.policies') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Policies
+    </a>
+
+    <div class="content-card mt-3">
+        <div class="content-card-header">
+            <h3>{{ policy.title }}</h3>
+            <div>
+                {% if acked %}
+                <span class="badge-stage" style="background: rgba(39,174,96,0.15); color: #2ecc71;">
+                    <i class="bi bi-check-circle"></i> Acknowledged
+                </span>
+                {% elif policy.requires_acknowledgment %}
+                <span class="badge-stage" style="background: rgba(243,156,18,0.15); color: #f1c40f;">
+                    Pending
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="content-card-body">
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                <span>Version {{ policy.version }}</span>
+                {% if policy.effective_date %}
+                <span class="mx-2">|</span>
+                <span>Effective: {{ policy.effective_date.strftime('%B %d, %Y') }}</span>
+                {% endif %}
+                <span class="mx-2">|</span>
+                <span>Category: {{ policy.category|title }}</span>
+            </div>
+
+            <div style="line-height: 1.8; color: var(--text);">
+                {{ policy.content|safe }}
+            </div>
+
+            {% if policy.requires_acknowledgment and not acked %}
+            <hr style="border-color: var(--border); margin: 2rem 0;">
+            <div style="background: rgba(243,156,18,0.08); border: 1px solid rgba(243,156,18,0.2); border-radius: var(--radius); padding: 1.25rem;">
+                <p style="margin-bottom: 1rem; font-weight: 500;">
+                    <i class="bi bi-info-circle" style="color: var(--warning);"></i>
+                    By clicking the button below, you confirm that you have read and understood this policy.
+                </p>
+                <form method="POST" action="{{ url_for('employee.acknowledge_policy', policy_id=policy.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-be-gold">
+                        <i class="bi bi-check-circle"></i> I Acknowledge This Policy
+                    </button>
+                </form>
+            </div>
+            {% elif acked %}
+            <hr style="border-color: var(--border); margin: 2rem 0;">
+            <div style="color: var(--success); font-size: 0.9rem;">
+                <i class="bi bi-check-circle-fill"></i> You acknowledged this policy on {{ acked.acknowledged_at.strftime('%B %d, %Y at %I:%M %p') }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

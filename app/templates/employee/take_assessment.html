@@ -1,0 +1,68 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ template.title }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('employee.assessments') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Assessments
+    </a>
+
+    <div class="content-card mt-3">
+        <div class="content-card-header">
+            <h3>{{ template.title }}</h3>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">
+                <i class="bi bi-clock"></i> {{ template.time_limit_minutes }} min
+                <span class="mx-2">|</span>
+                {{ questions|length }} questions
+                <span class="mx-2">|</span>
+                {{ template.passing_score }}% to pass
+            </div>
+        </div>
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {% for q in questions %}
+                {% set q_idx = loop.index0 %}
+                <div style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem;">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <strong style="font-size: 1rem;">{{ loop.index }}. {{ q.question }}</strong>
+                        <span class="badge-stage" style="background: rgba(42,147,193,0.15); color: #5dbde3;">{{ loop.index }}/{{ questions|length }}</span>
+                    </div>
+
+                    {% if q.type == 'multiple_choice' %}
+                    {% for option in q.options %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="q_{{ q_idx }}" value="{{ option }}" id="q{{ q_idx }}_{{ loop.index0 }}" required>
+                        <label class="form-check-label" for="q{{ q_idx }}_{{ loop.index0 }}">{{ option }}</label>
+                    </div>
+                    {% endfor %}
+                    {% elif q.type == 'true_false' %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="q_{{ loop.index0 }}" value="True" id="q{{ loop.index0 }}_true" required>
+                        <label class="form-check-label" for="q{{ loop.index0 }}_true">True</label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="q_{{ loop.index0 }}" value="False" id="q{{ loop.index0 }}_false">
+                        <label class="form-check-label" for="q{{ loop.index0 }}_false">False</label>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <a href="{{ url_for('employee.assessments') }}" class="btn btn-be-outline">Cancel</a>
+                    <button type="submit" class="btn btn-be-gold">
+                        <i class="bi bi-send"></i> Submit Assessment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

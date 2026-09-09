@@ -1,0 +1,75 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Policies — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Company Policies</h1>
+        <p class="lead">{{ total_acked }}/{{ total_req }} acknowledged</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    {% if total_req > 0 %}
+    <div class="mb-4">
+        <div class="progress" style="height: 10px;">
+            <div class="progress-bar" style="width: {{ (total_acked / total_req * 100)|int if total_req > 0 else 0 }}%; background: var(--success);"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% set cat_labels = {'handbook': 'Employee Handbook', 'compliance': 'Compliance', 'safety': 'Health & Safety', 'it': 'IT & Security', 'general': 'General'} %}
+
+    {% for category, policies in grouped.items() %}
+    <div class="content-card">
+        <div class="content-card-header" data-bs-toggle="collapse" data-bs-target="#cat-{{ category }}" style="cursor: pointer;">
+            <h3><i class="bi bi-folder2-open"></i> {{ cat_labels.get(category, category|title) }}</h3>
+            {% set cat_acked = policies|selectattr('id', 'in', acked_ids)|list|length %}
+            <span style="font-size: 0.85rem; color: var(--text-muted);">{{ cat_acked }}/{{ policies|length }}</span>
+        </div>
+        <div class="collapse show" id="cat-{{ category }}">
+            <div class="content-card-body p-0">
+                {% for policy in policies %}
+                <div class="task-item" style="padding: 1rem 1.5rem;">
+                    <div style="flex-shrink: 0;">
+                        {% if policy.id in acked_ids %}
+                        <i class="bi bi-check-circle-fill" style="font-size: 1.25rem; color: var(--success);"></i>
+                        {% elif policy.requires_acknowledgment %}
+                        <i class="bi bi-circle" style="font-size: 1.25rem; color: var(--warning);"></i>
+                        {% else %}
+                        <i class="bi bi-info-circle" style="font-size: 1.25rem; color: var(--info);"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <a href="{{ url_for('employee.policy_detail', policy_id=policy.id) }}" class="task-title" style="text-decoration: none; color: var(--text);">
+                            {{ policy.title }}
+                        </a>
+                        <div class="task-meta">
+                            v{{ policy.version }}
+                            {% if policy.effective_date %} | Effective {{ policy.effective_date.strftime('%b %d, %Y') }}{% endif %}
+                            {% if policy.requires_acknowledgment and policy.id not in acked_ids %}
+                            <span style="color: var(--warning); font-weight: 600;"> — Acknowledgment required</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('employee.policy_detail', policy_id=policy.id) }}" class="btn btn-sm btn-be-outline">View</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

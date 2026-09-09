@@ -1,0 +1,68 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Self Review — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('employee.performance') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Performance
+    </a>
+
+    <div class="content-card mt-3" style="max-width: 700px;">
+        <div class="content-card-header">
+            <h3>{{ review.cycle.title }} — Self Assessment</h3>
+            <span class="badge-stage" style="background: rgba(243,156,18,0.15); color: #f1c40f;">{{ review.cycle.cycle_type|title }}</span>
+        </div>
+        <div class="content-card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Rating -->
+                <div class="mb-4">
+                    <label class="form-label" style="font-weight: 600;">Overall Self-Rating</label>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">How would you rate your overall performance this period?</p>
+                    <div class="d-flex gap-2 mt-2">
+                        {% for i in range(1, 6) %}
+                        <label style="flex: 1; text-align: center; cursor: pointer;">
+                            <input type="radio" name="self_rating" value="{{ i }}" class="d-none" required
+                                   onchange="document.querySelectorAll('.rating-btn').forEach(b => b.style.background = 'var(--bg-panel-alt)'); this.parentElement.querySelector('.rating-btn').style.background = 'rgba(241,66,11,0.2)';">
+                            <div class="rating-btn" style="padding: 1rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel-alt); transition: all 0.2s;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: var(--orange);">{{ i }}</div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted);">
+                                    {% if i == 1 %}Needs Work{% elif i == 2 %}Developing{% elif i == 3 %}Meets{% elif i == 4 %}Exceeds{% else %}Outstanding{% endif %}
+                                </div>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Comments -->
+                <div class="mb-4">
+                    <label class="form-label" style="font-weight: 600;">Reflection</label>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">What went well? What could improve? What support do you need?</p>
+                    <textarea name="self_comments" class="form-control" rows="5" placeholder="Share your honest self-assessment..." required>{{ review.self_comments or '' }}</textarea>
+                </div>
+
+                <!-- Goals -->
+                <div class="mb-4">
+                    <label class="form-label" style="font-weight: 600;">Goals for Next Period</label>
+                    <p style="color: var(--text-muted); font-size: 0.85rem;">What do you want to achieve in the next review cycle?</p>
+                    <textarea name="goals_next_period" class="form-control" rows="4" placeholder="List your key goals and development areas...">{{ review.goals_next_period or '' }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('employee.performance') }}" class="btn btn-be-outline">Cancel</a>
+                    <button type="submit" class="btn btn-be-gold">
+                        <i class="bi bi-send"></i> Submit Self-Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

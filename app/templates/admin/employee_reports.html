@@ -1,0 +1,178 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Employee Reports — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Employee Reports</h1>
+        <p class="lead">{{ employee_count }} active employee{{ 's' if employee_count != 1 }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ employee_count }}</div>
+                        <div class="stat-label">Employees</div>
+                    </div>
+                    <i class="bi bi-person-badge" style="font-size: 1.5rem; color: var(--blue);"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ pending_pto }}</div>
+                        <div class="stat-label">Pending PTO</div>
+                    </div>
+                    <i class="bi bi-calendar-event" style="font-size: 1.5rem; color: var(--warning);"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ approved_pto }}</div>
+                        <div class="stat-label">Approved PTO</div>
+                    </div>
+                    <i class="bi bi-calendar-check" style="font-size: 1.5rem; color: var(--success);"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ cycle_data|length }}</div>
+                        <div class="stat-label">Active Review Cycles</div>
+                    </div>
+                    <i class="bi bi-graph-up" style="font-size: 1.5rem; color: var(--orange);"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <!-- Policy Acknowledgments -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-shield-check"></i> Policy Acknowledgment Rates</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if policy_ack_data %}
+                    {% for p in policy_ack_data %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between" style="font-size: 0.9rem;">
+                            <span>{{ p.title }}</span>
+                            <strong>{{ p.acknowledged }}/{{ p.total }} ({{ p.pct }}%)</strong>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar" style="width: {{ p.pct }}%; background: {{ 'var(--success)' if p.pct == 100 else 'var(--warning)' if p.pct >= 50 else 'var(--danger)' }};"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: var(--text-muted);">No policies configured.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Assessment Pass Rates -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-clipboard-check"></i> Assessment Pass Rates</h3>
+                </div>
+                <div class="content-card-body p-0">
+                    {% if assessment_data %}
+                    <table class="table table-be mb-0">
+                        <thead>
+                            <tr><th>Assessment</th><th>Taken</th><th>Passed</th><th>Rate</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for a in assessment_data %}
+                            <tr>
+                                <td>{{ a.title }}</td>
+                                <td>{{ a.taken }}</td>
+                                <td>{{ a.passed }}</td>
+                                <td><strong style="color: {{ 'var(--success)' if a.pass_rate >= 80 else 'var(--warning)' }};">{{ a.pass_rate }}%</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center py-3" style="color: var(--text-muted);">No assessments configured.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <!-- Training Completion -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-mortarboard"></i> Training Completion</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if training_data %}
+                    {% for t in training_data %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between" style="font-size: 0.9rem;">
+                            <span>
+                                {{ t.title }}
+                                {% if t.required %}<span class="badge-stage ms-1" style="background: rgba(241,66,11,0.15); color: #f1420b; font-size: 0.65rem;">Required</span>{% endif %}
+                            </span>
+                            <strong>{{ t.completed }}/{{ t.total }} ({{ t.pct }}%)</strong>
+                        </div>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar" style="width: {{ t.pct }}%; background: {{ 'var(--success)' if t.pct == 100 else 'var(--blue)' }};"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: var(--text-muted);">No courses configured.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Review Cycles -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-graph-up"></i> Active Review Cycles</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if cycle_data %}
+                    {% for c in cycle_data %}
+                    <div style="background: var(--bg-panel-alt); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem;">
+                        <strong>{{ c.title }}</strong>
+                        <div class="d-flex gap-3 mt-1" style="font-size: 0.85rem;">
+                            <span style="color: var(--success);">{{ c.completed }} complete</span>
+                            <span style="color: var(--warning);">{{ c.pending_self }} pending self</span>
+                            <span style="color: var(--info);">{{ c.pending_manager }} pending mgr</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: var(--text-muted);">No active review cycles.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

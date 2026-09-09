@@ -11,7 +11,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     name = db.Column(db.String(100), nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # candidate, newhire, manager, admin
+    role = db.Column(db.String(20), nullable=False)  # candidate, newhire, employee, manager, admin
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active_user = db.Column(db.Boolean, default=True)
 
@@ -293,3 +293,265 @@ class CandidateNote(db.Model):
 
     def __repr__(self):
         return f'<CandidateNote {self.id} for candidate {self.candidate_id}>'
+
+
+# ── Employee Portal ──────────────────────────────────────────────────────────
+
+class EmployeeProfile(db.Model):
+    __tablename__ = 'employee_profiles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
+    department = db.Column(db.String(100))
+    title = db.Column(db.String(150))
+    start_date = db.Column(db.Date)
+    manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    employee_number = db.Column(db.String(20))
+    phone = db.Column(db.String(30))
+    emergency_contact_name = db.Column(db.String(100))
+    emergency_contact_phone = db.Column(db.String(30))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('employee_profile', uselist=False))
+    manager = db.relationship('User', foreign_keys=[manager_id])
+
+    def __repr__(self):
+        return f'<EmployeeProfile {self.user_id}>'
+
+
+class Policy(db.Model):
+    __tablename__ = 'policies'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(50))  # handbook, compliance, safety, it
+    content = db.Column(db.Text, nullable=False)
+    version = db.Column(db.String(20), default='1.0')
+    effective_date = db.Column(db.Date)
+    requires_acknowledgment = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    acknowledgments = db.relationship('PolicyAcknowledgment', backref='policy', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<Policy {self.title}>'
+
+
+class PolicyAcknowledgment(db.Model):
+    __tablename__ = 'policy_acknowledgments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    policy_id = db.Column(db.Integer, db.ForeignKey('policies.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    acknowledged_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f'<PolicyAck policy={self.policy_id} user={self.user_id}>'
+
+
+class ContentAccessLog(db.Model):
+    __tablename__ = 'content_access_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    accessed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    document = db.relationship('Document', foreign_keys=[document_id])
+    user = db.relationship('User', foreign_keys=[user_id])
+
+
+class AssessmentTemplate(db.Model):
+    __tablename__ = 'assessment_templates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50))  # competency, personality, skills, compliance
+    questions = db.Column(db.Text)  # JSON string
+    time_limit_minutes = db.Column(db.Integer, default=30)
+    passing_score = db.Column(db.Integer, default=70)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    results = db.relationship('AssessmentResult', backref='template', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<AssessmentTemplate {self.title}>'
+
+    def get_questions(self):
+        import json
+        return json.loads(self.questions) if self.questions else []
+
+
+class AssessmentResult(db.Model):
+    __tablename__ = 'assessment_results'
+
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('assessment_templates.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    answers = db.Column(db.Text)  # JSON string
+    score = db.Column(db.Float)
+    passed = db.Column(db.Boolean)
+    started_at = db.Column(db.DateTime)
+    completed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    attempt_number = db.Column(db.Integer, default=1)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f'<AssessmentResult template={self.template_id} user={self.user_id} score={self.score}>'
+
+
+class TrainingCourse(db.Model):
+    __tablename__ = 'training_courses'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50))  # onboarding, compliance, skills, leadership
+    estimated_hours = db.Column(db.Float, default=1.0)
+    is_required = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    modules = db.relationship('TrainingModule', backref='course', lazy='dynamic',
+                              order_by='TrainingModule.order')
+    completions = db.relationship('TrainingCompletion', backref='course', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<TrainingCourse {self.title}>'
+
+    @property
+    def modules_count(self):
+        return self.modules.count()
+
+    def user_progress(self, user_id):
+        total = self.modules.count()
+        if total == 0:
+            return 0
+        done = TrainingCompletion.query.filter_by(
+            course_id=self.id, user_id=user_id
+        ).filter(TrainingCompletion.module_id.isnot(None)).count()
+        return int(done / total * 100)
+
+
+class TrainingModule(db.Model):
+    __tablename__ = 'training_modules'
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('training_courses.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    order = db.Column(db.Integer, default=0)
+    content_type = db.Column(db.String(30))  # text, video, interactive, quiz
+    content = db.Column(db.Text)  # HTML content
+    duration_minutes = db.Column(db.Integer, default=15)
+
+    def __repr__(self):
+        return f'<TrainingModule {self.title}>'
+
+
+class TrainingCompletion(db.Model):
+    __tablename__ = 'training_completions'
+
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('training_courses.id'), nullable=False)
+    module_id = db.Column(db.Integer, db.ForeignKey('training_modules.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    completed_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    score = db.Column(db.Float)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    module = db.relationship('TrainingModule', foreign_keys=[module_id])
+
+
+class PTOBalance(db.Model):
+    __tablename__ = 'pto_balances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    vacation_total = db.Column(db.Float, default=15)
+    vacation_used = db.Column(db.Float, default=0)
+    sick_total = db.Column(db.Float, default=10)
+    sick_used = db.Column(db.Float, default=0)
+    personal_total = db.Column(db.Float, default=3)
+    personal_used = db.Column(db.Float, default=0)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    @property
+    def vacation_remaining(self):
+        return self.vacation_total - self.vacation_used
+
+    @property
+    def sick_remaining(self):
+        return self.sick_total - self.sick_used
+
+    @property
+    def personal_remaining(self):
+        return self.personal_total - self.personal_used
+
+    @property
+    def total_remaining(self):
+        return self.vacation_remaining + self.sick_remaining + self.personal_remaining
+
+
+class PTORequest(db.Model):
+    __tablename__ = 'pto_requests'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    leave_type = db.Column(db.String(30))  # vacation, sick, personal, bereavement, other
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    days_requested = db.Column(db.Float, nullable=False)
+    reason = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')  # pending, approved, denied
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    reviewed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by])
+
+    def __repr__(self):
+        return f'<PTORequest {self.leave_type} {self.start_date} - {self.end_date}>'
+
+
+class ReviewCycle(db.Model):
+    __tablename__ = 'review_cycles'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    cycle_type = db.Column(db.String(30))  # annual, mid_year, quarterly
+    status = db.Column(db.String(20), default='active')  # draft, active, closed
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    reviews = db.relationship('PerformanceReview', backref='cycle', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<ReviewCycle {self.title}>'
+
+
+class PerformanceReview(db.Model):
+    __tablename__ = 'performance_reviews'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cycle_id = db.Column(db.Integer, db.ForeignKey('review_cycles.id'), nullable=False)
+    employee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    self_rating = db.Column(db.Integer)  # 1-5
+    self_comments = db.Column(db.Text)
+    manager_rating = db.Column(db.Integer)  # 1-5
+    manager_comments = db.Column(db.Text)
+    goals_next_period = db.Column(db.Text)
+    status = db.Column(db.String(30), default='pending_self')  # pending_self, pending_manager, complete
+    submitted_at = db.Column(db.DateTime)
+
+    employee = db.relationship('User', foreign_keys=[employee_id])
+    reviewer = db.relationship('User', foreign_keys=[reviewer_id])

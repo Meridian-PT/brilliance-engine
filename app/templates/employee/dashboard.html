@@ -1,0 +1,213 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Employee Hub — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.policies') }}"><i class="bi bi-shield-check"></i> Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.content_library') }}"><i class="bi bi-collection"></i> Library</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Welcome back, {{ current_user.name }}</h1>
+        <p class="lead">Your Employee Hub — Everything you need in one place</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- Stats Grid -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ acked_policies }}/{{ total_policies }}</div>
+                        <div class="stat-label">Policies Acknowledged</div>
+                    </div>
+                    <i class="bi bi-shield-check" style="font-size: 1.5rem; color: var(--success);"></i>
+                </div>
+                {% if total_policies > 0 %}
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{ (acked_policies / total_policies * 100)|int }}%; background: var(--success);"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ completed_trainings }}/{{ total_courses }}</div>
+                        <div class="stat-label">Trainings Completed</div>
+                    </div>
+                    <i class="bi bi-mortarboard" style="font-size: 1.5rem; color: var(--blue);"></i>
+                </div>
+                {% if total_courses > 0 %}
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{ (completed_trainings / total_courses * 100)|int }}%;"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ pto_remaining|int }}</div>
+                        <div class="stat-label">PTO Days Remaining</div>
+                    </div>
+                    <i class="bi bi-calendar2-heart" style="font-size: 1.5rem; color: var(--warning);"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-value">{{ review_score if review_score else '—' }}<span style="font-size: 1rem; color: var(--text-muted);">{% if review_score %}/5{% endif %}</span></div>
+                        <div class="stat-label">Latest Review</div>
+                    </div>
+                    <i class="bi bi-graph-up" style="font-size: 1.5rem; color: var(--orange);"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Quick Links -->
+        <div class="col-md-8">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-grid"></i> Quick Access</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <a href="{{ url_for('employee.policies') }}" class="d-block text-decoration-none" style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                <i class="bi bi-shield-check" style="font-size: 1.75rem; color: var(--success);"></i>
+                                <div style="font-weight: 600; margin-top: 0.5rem; color: var(--text);">Policies</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ total_policies - acked_policies }} pending</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('employee.training') }}" class="d-block text-decoration-none" style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                <i class="bi bi-mortarboard" style="font-size: 1.75rem; color: var(--blue);"></i>
+                                <div style="font-weight: 600; margin-top: 0.5rem; color: var(--text);">Training Studio</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ total_courses }} courses</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('employee.request_time_off') }}" class="d-block text-decoration-none" style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                <i class="bi bi-calendar-plus" style="font-size: 1.75rem; color: var(--warning);"></i>
+                                <div style="font-weight: 600; margin-top: 0.5rem; color: var(--text);">Request Time Off</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ pto_remaining|int }} days left</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('employee.assessments') }}" class="d-block text-decoration-none" style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                <i class="bi bi-clipboard-check" style="font-size: 1.75rem; color: var(--orange);"></i>
+                                <div style="font-weight: 600; margin-top: 0.5rem; color: var(--text);">Assessments</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Skills & competency</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('employee.content_library') }}" class="d-block text-decoration-none" style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                <i class="bi bi-collection" style="font-size: 1.75rem; color: #1ABC9C;"></i>
+                                <div style="font-weight: 600; margin-top: 0.5rem; color: var(--text);">Content Library</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Documents & guides</div>
+                            </a>
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ url_for('employee.performance') }}" class="d-block text-decoration-none" style="background: var(--bg-panel-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+                                <i class="bi bi-graph-up" style="font-size: 1.75rem; color: #E74C3C;"></i>
+                                <div style="font-weight: 600; margin-top: 0.5rem; color: var(--text);">Performance</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ active_reviews }} pending review{{ 's' if active_reviews != 1 }}</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attention Needed -->
+            {% if pending_pto > 0 or active_reviews > 0 or acked_policies < total_policies %}
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-bell"></i> Needs Your Attention</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if acked_policies < total_policies %}
+                    <div class="task-item">
+                        <div class="task-checkbox"><i class="bi bi-exclamation" style="color: var(--warning);"></i></div>
+                        <div>
+                            <div class="task-title">{{ total_policies - acked_policies }} polic{{ 'y' if total_policies - acked_policies == 1 else 'ies' }} awaiting acknowledgment</div>
+                            <div class="task-meta"><a href="{{ url_for('employee.policies') }}">Review now</a></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if active_reviews > 0 %}
+                    <div class="task-item">
+                        <div class="task-checkbox"><i class="bi bi-exclamation" style="color: var(--orange);"></i></div>
+                        <div>
+                            <div class="task-title">{{ active_reviews }} self-review{{ 's' if active_reviews != 1 }} pending</div>
+                            <div class="task-meta"><a href="{{ url_for('employee.performance') }}">Complete now</a></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if pending_pto > 0 %}
+                    <div class="task-item">
+                        <div class="task-checkbox"><i class="bi bi-clock" style="color: var(--info);"></i></div>
+                        <div>
+                            <div class="task-title">{{ pending_pto }} PTO request{{ 's' if pending_pto != 1 }} pending approval</div>
+                            <div class="task-meta"><a href="{{ url_for('employee.time_off') }}">View status</a></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            {% if profile %}
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-person-badge"></i> Your Info</h3>
+                </div>
+                <div class="content-card-body">
+                    <div style="font-size: 0.9rem;">
+                        {% if profile.title %}<div class="mb-1"><strong>Title:</strong> {{ profile.title }}</div>{% endif %}
+                        {% if profile.department %}<div class="mb-1"><strong>Department:</strong> {{ profile.department }}</div>{% endif %}
+                        {% if profile.employee_number %}<div class="mb-1"><strong>Employee #:</strong> {{ profile.employee_number }}</div>{% endif %}
+                        {% if profile.start_date %}<div class="mb-1"><strong>Start Date:</strong> {{ profile.start_date.strftime('%B %d, %Y') }}</div>{% endif %}
+                        {% if profile.manager %}<div class="mb-1"><strong>Manager:</strong> {{ profile.manager.name }}</div>{% endif %}
+                    </div>
+                    <a href="{{ url_for('employee.my_profile') }}" class="btn btn-sm btn-be-outline w-100 mt-2">View Full Profile</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-heart"></i> PT Values</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="welcome-quote" style="margin-top: 0;">
+                        "Pure isn't a technology company that serves people. It's a people company that empowers through technology."
+                    </div>
+                    <div class="mt-3" style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                        {% for pillar in ['Integrity', 'Accountability', 'Transparency', 'Growth', 'Innovation', 'Persistence', 'Love'] %}
+                        <span style="background: rgba(42,147,193,0.1); color: var(--blue); padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;">{{ pillar }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

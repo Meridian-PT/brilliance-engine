@@ -3,7 +3,9 @@ from flask_login import login_required, current_user
 from datetime import datetime, timezone
 from app import db
 from app.models import (Candidate, Position, Interview, Scorecard, User,
-                         CandidateNote, PIPELINE_STAGES, NewHire)
+                         CandidateNote, PIPELINE_STAGES, NewHire,
+                         EmployeeProfile, PTORequest, TrainingCompletion,
+                         PerformanceReview, ReviewCycle)
 
 manager_bp = Blueprint('manager', __name__, template_folder='../templates/manager')
 
@@ -311,3 +313,79 @@ def search():
                 ).limit(30).all()
 
     return render_template('manager/search.html', q=q, results=results)
+
+
+# ── Employee Team Management ────────────────────────────────────────────────
+
+@manager_bp.route('/employees')
+@login_required
+@manager_required
+def employees():
+    if current_user.role == 'admin':
+        reports = EmployeeProfile.query.all()
+    else:
+        reports = EmployeeProfile.query.filter_by(manager_id=current_user.id).all()
+    return render_template('manager/employees.html', reports=reports)
+
+
+@manager_bp.route('/employees/<int:profile_id>')
+@login_required
+@manager_required
+def employee_detail(profile_id):
+    profile = EmployeeProfile.query.get_or_404(profile_id)
+    if current_user.role != 'admin' and profile.manager_id != current_user.id:
+        flash('Access denied.', 'error')
+        return redirect(url_for('manager.employees'))
+
+    # Training progress
+    completions = TrainingCompletion.query.filter_by(
+        user_id=profile.user_id, module_id=None).count()
+
+    # PTO requests
+    pto_requests = PTORequest.query.filter_by(user_id=profile.user_id) \
+        .order_by(PTORequest.created_at.desc()).limit(5).all()
+
+    # Performance reviews
+    reviews = PerformanceReview.query.filter_by(employee_id=profile.user_id) \
+        .order_by(PerformanceReview.submitted_at.desc()).limit(5).all()
+
+    return render_template('manager/employee_detail.html',
+                           profile=profile, completions=completions,
+                           pto_requests=pto_requests, reviews=reviews)
+
+
+@manager_bp.route('/pto/<int:request_id>/review', methods=['POST'])
+@login_required
+@manager_required
+def review_pto(request_id):
+    pto = PTORequest.query.get_or_404(request_id)
+    action = request.form.get('action', 'approve')
+
+    pto.status = 'approved' if action == 'approve' else 'denied'
+    pto.reviewed_by = current_user.id
+    pto.reviewed_at = datetime.now(timezone.utc)
+    db.session.commit()
+
+    flash(f'PTO request {pto.status}.', 'success')
+    return redirect(url_for('manager.employee_detail',
+                            profile_id=EmployeeProfile.query.filter_by(user_id=pto.user_id).first().id))
+
+
+@manager_bp.route('/performance/<int:review_id>/manager-review', methods=['POST'])
+@login_required
+@manager_required
+def manager_review(review_id):
+    review = PerformanceReview.query.get_or_404(review_id)
+    if review.status != 'pending_manager':
+        flash('This review is not pending manager input.', 'error')
+        return redirect(url_for('manager.employees'))
+
+    review.manager_rating = int(request.form.get('manager_rating', 3))
+    review.manager_comments = request.form.get('manager_comments', '').strip()
+    review.reviewer_id = current_user.id
+    review.status = 'complete'
+    db.session.commit()
+
+    flash('Manager review submitted.', 'success')
+    return redirect(url_for('manager.employee_detail',
+                            profile_id=EmployeeProfile.query.filter_by(user_id=review.employee_id).first().id))
