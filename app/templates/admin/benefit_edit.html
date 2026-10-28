@@ -1,0 +1,75 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Edit {{ plan.name }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <a href="{{ url_for('admin.benefits') }}" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">
+            <i class="bi bi-arrow-left"></i> Back to Benefits
+        </a>
+        <h1 class="mt-2">{{ plan.name }}</h1>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card" style="max-width: 700px;">
+        <div class="content-card-body">
+            <form method="POST" action="{{ url_for('admin.edit_benefit_plan', plan_id=plan.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Plan Name</label>
+                        <input type="text" name="name" class="form-control" value="{{ plan.name }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Type</label>
+                        <select name="plan_type" class="form-select" required>
+                            {% for t in plan_types %}
+                            <option value="{{ t }}" {% if plan.plan_type == t %}selected{% endif %}>{{ t|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tier</label>
+                        <input type="text" name="tier" class="form-control" value="{{ plan.tier or '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Provider</label>
+                        <input type="text" name="provider" class="form-control" value="{{ plan.provider or '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="3">{{ plan.description or '' }}</textarea>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-check">
+                            <input type="checkbox" name="is_active" class="form-check-input" id="is_active" {% if plan.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">Active (available for employee enrollment)</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-be mt-3"><i class="bi bi-save"></i> Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

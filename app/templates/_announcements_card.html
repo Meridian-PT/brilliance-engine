@@ -1,0 +1,32 @@
+<!-- Compact "Company News" card. Included on employee/manager/admin dashboards.
+     Expects an `announcements` variable (list of Announcement, pinned first). -->
+<div class="content-card">
+    <div class="content-card-header">
+        <h3><i class="bi bi-megaphone"></i> Company News</h3>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin.announcements') }}" class="btn btn-sm btn-be-outline">Manage</a>
+        {% endif %}
+    </div>
+    <div class="content-card-body">
+        {% if announcements %}
+        {% for a in announcements %}
+        <div style="padding: 0.75rem 0; {% if not loop.last %}border-bottom: 1px solid var(--border);{% endif %}">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+                <strong style="color: var(--text);">
+                    {% if a.is_pinned %}<i class="bi bi-pin-angle-fill" style="color: var(--orange);"></i>{% endif %}
+                    {{ a.title }}
+                </strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">
+                    {{ a.published_at.strftime('%b %d') if a.published_at else '' }}
+                </span>
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.25rem;">
+                {{ a.content|truncate(160) }}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p style="color: var(--text-muted); margin: 0;">No company news right now.</p>
+        {% endif %}
+    </div>
+</div>

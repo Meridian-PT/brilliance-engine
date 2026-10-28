@@ -10,7 +10,9 @@ from app.models import (User, Candidate, Position, Interview, Scorecard,
                          PolicyAcknowledgment, TrainingCourse, TrainingCompletion,
                          AssessmentTemplate, AssessmentResult, PTOBalance,
                          PTORequest, ReviewCycle, PerformanceReview,
-                         CompensationRecord, BonusRecord, SalaryBand, AuditLog)
+                         CompensationRecord, BonusRecord, SalaryBand, AuditLog,
+                         BenefitPlan, BenefitEnrollment, OpenEnrollmentWindow,
+                         AccrualPolicy, Announcement, get_active_announcements_for)
 from app.audit import log_change
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
@@ -50,6 +52,8 @@ def dashboard():
     # Recent candidates
     recent_candidates = Candidate.query.order_by(Candidate.applied_at.desc()).limit(10).all()
 
+    announcements = get_active_announcements_for(current_user)
+
     return render_template('admin/dashboard.html',
                            total_users=total_users,
                            total_candidates=total_candidates,
@@ -61,7 +65,8 @@ def dashboard():
                            total_documents=total_documents,
                            pipeline=pipeline,
                            recent_candidates=recent_candidates,
-                           stages=PIPELINE_STAGES)
+                           stages=PIPELINE_STAGES,
+                           announcements=announcements)
 
 
 # ── Users ────────────────────────────────────────────────────────────────────
@@ -744,3 +749,386 @@ def audit_log():
 
     return render_template('admin/audit.html', entries=entries,
                            entity_types=entity_types, current_type=entity_type)
+
+
+# ── Benefits Administration (Phase 3) ─────────────────────────────────────────
+
+BENEFIT_PLAN_TYPES = ['health', 'dental', 'vision', 'life', 'rrsp', 'other']
+
+
+@admin_bp.route('/benefits', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def benefits():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        plan_type = request.form.get('plan_type', '').strip()
+        if not name or not plan_type:
+            flash('Plan name and type are required.', 'error')
+            return redirect(url_for('admin.benefits'))
+
+        plan = BenefitPlan(
+            name=name,
+            plan_type=plan_type,
+            provider=request.form.get('provider', '').strip() or None,
+            tier=request.form.get('tier', '').strip() or None,
+            description=request.form.get('description', '').strip() or None,
+        )
+        db.session.add(plan)
+        db.session.commit()
+        flash(f'Benefit plan "{name}" created.', 'success')
+        return redirect(url_for('admin.benefits'))
+
+    plans = BenefitPlan.query.order_by(BenefitPlan.is_active.desc(), BenefitPlan.name).all()
+    return render_template('admin/benefits.html', plans=plans, plan_types=BENEFIT_PLAN_TYPES)
+
+
+@admin_bp.route('/benefits/<int:plan_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_benefit_plan(plan_id):
+    plan = BenefitPlan.query.get_or_404(plan_id)
+
+    if request.method == 'POST':
+        plan.name = request.form.get('name', plan.name).strip()
+        plan.plan_type = request.form.get('plan_type', plan.plan_type).strip()
+        plan.provider = request.form.get('provider', '').strip() or None
+        plan.tier = request.form.get('tier', '').strip() or None
+        plan.description = request.form.get('description', '').strip() or None
+        plan.is_active = 'is_active' in request.form
+        db.session.commit()
+        flash(f'Benefit plan "{plan.name}" updated.', 'success')
+        return redirect(url_for('admin.benefits'))
+
+    return render_template('admin/benefit_edit.html', plan=plan, plan_types=BENEFIT_PLAN_TYPES)
+
+
+@admin_bp.route('/benefits/<int:plan_id>/toggle-active', methods=['POST'])
+@login_required
+@admin_required
+def toggle_benefit_plan(plan_id):
+    plan = BenefitPlan.query.get_or_404(plan_id)
+    plan.is_active = not plan.is_active
+    db.session.commit()
+    flash(f'"{plan.name}" {"activated" if plan.is_active else "deactivated"}.', 'success')
+    return redirect(url_for('admin.benefits'))
+
+
+@admin_bp.route('/enrollment-windows', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def enrollment_windows():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        start_str = request.form.get('start_date', '')
+        end_str = request.form.get('end_date', '')
+
+        if not name or not start_str or not end_str:
+            flash('Name, start date, and end date are required.', 'error')
+            return redirect(url_for('admin.enrollment_windows'))
+
+        start = datetime.strptime(start_str, '%Y-%m-%d').date()
+        end = datetime.strptime(end_str, '%Y-%m-%d').date()
+        if end < start:
+            flash('End date must be on or after start date.', 'error')
+            return redirect(url_for('admin.enrollment_windows'))
+
+        window = OpenEnrollmentWindow(name=name, start_date=start, end_date=end, is_active=True)
+        db.session.add(window)
+        db.session.commit()
+        flash(f'Enrollment window "{name}" created.', 'success')
+        return redirect(url_for('admin.enrollment_windows'))
+
+    windows = OpenEnrollmentWindow.query.order_by(OpenEnrollmentWindow.start_date.desc()).all()
+    return render_template('admin/enrollment_windows.html', windows=windows)
+
+
+@admin_bp.route('/enrollment-windows/<int:window_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_enrollment_window(window_id):
+    window = OpenEnrollmentWindow.query.get_or_404(window_id)
+
+    if request.method == 'POST':
+        window.name = request.form.get('name', window.name).strip()
+        start_str = request.form.get('start_date', '')
+        end_str = request.form.get('end_date', '')
+        if start_str:
+            window.start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
+        if end_str:
+            window.end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
+        window.is_active = 'is_active' in request.form
+        db.session.commit()
+        flash(f'Enrollment window "{window.name}" updated.', 'success')
+        return redirect(url_for('admin.enrollment_windows'))
+
+    return render_template('admin/enrollment_window_edit.html', window=window)
+
+
+@admin_bp.route('/enrollment-windows/<int:window_id>/toggle-active', methods=['POST'])
+@login_required
+@admin_required
+def toggle_enrollment_window(window_id):
+    window = OpenEnrollmentWindow.query.get_or_404(window_id)
+    window.is_active = not window.is_active
+    db.session.commit()
+    flash(f'"{window.name}" {"activated" if window.is_active else "deactivated"}.', 'success')
+    return redirect(url_for('admin.enrollment_windows'))
+
+
+# ── Leave Management — Accrual Policies (Phase 3) ────────────────────────────
+
+ACCRUAL_LEAVE_TYPES = ['vacation', 'sick', 'personal']
+ACCRUAL_PERIODS = ['monthly', 'per_pay', 'annual']
+
+
+@admin_bp.route('/accrual-policies', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def accrual_policies():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        leave_type = request.form.get('leave_type', '').strip()
+        try:
+            rate = float(request.form.get('rate_per_period', '0') or '0')
+        except ValueError:
+            flash('Rate per period must be a number.', 'error')
+            return redirect(url_for('admin.accrual_policies'))
+
+        if not name or not leave_type or rate <= 0:
+            flash('Name, leave type, and a positive accrual rate are required.', 'error')
+            return redirect(url_for('admin.accrual_policies'))
+
+        annual_cap = request.form.get('annual_cap', '').strip()
+        carryover_max = request.form.get('carryover_max', '').strip()
+
+        policy = AccrualPolicy(
+            name=name,
+            leave_type=leave_type,
+            rate_per_period=rate,
+            period=request.form.get('period', 'monthly'),
+            annual_cap=float(annual_cap) if annual_cap else None,
+            carryover_max=float(carryover_max) if carryover_max else None,
+        )
+        db.session.add(policy)
+        db.session.commit()
+        flash(f'Accrual policy "{name}" created.', 'success')
+        return redirect(url_for('admin.accrual_policies'))
+
+    policies = AccrualPolicy.query.order_by(AccrualPolicy.is_active.desc(), AccrualPolicy.name).all()
+    return render_template('admin/accrual_policies.html', policies=policies,
+                           leave_types=ACCRUAL_LEAVE_TYPES, periods=ACCRUAL_PERIODS)
+
+
+@admin_bp.route('/accrual-policies/<int:policy_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_accrual_policy(policy_id):
+    policy = AccrualPolicy.query.get_or_404(policy_id)
+
+    if request.method == 'POST':
+        policy.name = request.form.get('name', policy.name).strip()
+        policy.leave_type = request.form.get('leave_type', policy.leave_type).strip()
+        try:
+            policy.rate_per_period = float(request.form.get('rate_per_period', policy.rate_per_period))
+        except ValueError:
+            flash('Rate per period must be a number.', 'error')
+            return redirect(url_for('admin.edit_accrual_policy', policy_id=policy_id))
+        policy.period = request.form.get('period', policy.period)
+        annual_cap = request.form.get('annual_cap', '').strip()
+        carryover_max = request.form.get('carryover_max', '').strip()
+        policy.annual_cap = float(annual_cap) if annual_cap else None
+        policy.carryover_max = float(carryover_max) if carryover_max else None
+        policy.is_active = 'is_active' in request.form
+        db.session.commit()
+        flash(f'Accrual policy "{policy.name}" updated.', 'success')
+        return redirect(url_for('admin.accrual_policies'))
+
+    return render_template('admin/accrual_policy_edit.html', policy=policy,
+                           leave_types=ACCRUAL_LEAVE_TYPES, periods=ACCRUAL_PERIODS)
+
+
+# ── Reporting & Analytics (Phase 3) ───────────────────────────────────────────
+
+@admin_bp.route('/analytics')
+@login_required
+@admin_required
+def analytics():
+    # Headcount by department (active employees)
+    headcount_rows = db.session.query(
+        EmployeeProfile.department, db.func.count(EmployeeProfile.id)
+    ).filter(EmployeeProfile.employment_status == 'active').group_by(EmployeeProfile.department).all()
+    headcount_labels = [r[0] or 'Unassigned' for r in headcount_rows]
+    headcount_values = [r[1] for r in headcount_rows]
+
+    # Employment status breakdown
+    status_rows = db.session.query(
+        EmployeeProfile.employment_status, db.func.count(EmployeeProfile.id)
+    ).group_by(EmployeeProfile.employment_status).all()
+    status_labels = [(r[0] or 'active').replace('_', ' ').title() for r in status_rows]
+    status_values = [r[1] for r in status_rows]
+
+    # Turnover by month (last 12 months, based on termination_date)
+    terminated = EmployeeProfile.query.filter(
+        EmployeeProfile.employment_status == 'terminated',
+        EmployeeProfile.termination_date.isnot(None)
+    ).all()
+    turnover_counts = {}
+    for p in terminated:
+        key = p.termination_date.strftime('%Y-%m')
+        turnover_counts[key] = turnover_counts.get(key, 0) + 1
+    turnover_labels = sorted(turnover_counts.keys())
+    turnover_values = [turnover_counts[k] for k in turnover_labels]
+
+    # PTO utilization (used vs total) per employee, current year
+    pto_rows = PTOBalance.query.filter_by(year=date.today().year).join(
+        User, PTOBalance.user_id == User.id).order_by(User.name).all()
+    pto_labels = [p.user.name for p in pto_rows]
+    pto_used = [p.vacation_used + p.sick_used + p.personal_used for p in pto_rows]
+    pto_total = [p.vacation_total + p.sick_total + p.personal_total for p in pto_rows]
+
+    # Policy acknowledgment rate
+    employee_count = User.query.filter_by(role='employee').count()
+    policy_labels, policy_values = [], []
+    for policy in Policy.query.filter_by(is_active=True, requires_acknowledgment=True).all():
+        ack_count = PolicyAcknowledgment.query.filter_by(policy_id=policy.id).count()
+        policy_labels.append(policy.title)
+        policy_values.append(int(ack_count / employee_count * 100) if employee_count else 0)
+
+    # Training completion rate
+    training_labels, training_values = [], []
+    for course in TrainingCourse.query.filter_by(is_active=True).all():
+        completed = TrainingCompletion.query.filter_by(course_id=course.id, module_id=None).count()
+        training_labels.append(course.title)
+        training_values.append(int(completed / employee_count * 100) if employee_count else 0)
+
+    return render_template('admin/analytics.html',
+                           headcount_labels=headcount_labels, headcount_values=headcount_values,
+                           status_labels=status_labels, status_values=status_values,
+                           turnover_labels=turnover_labels, turnover_values=turnover_values,
+                           pto_labels=pto_labels, pto_used=pto_used, pto_total=pto_total,
+                           policy_labels=policy_labels, policy_values=policy_values,
+                           training_labels=training_labels, training_values=training_values)
+
+
+@admin_bp.route('/analytics/export/headcount.csv')
+@login_required
+@admin_required
+def export_headcount_csv():
+    import csv
+    import io
+    from flask import Response
+
+    rows = db.session.query(
+        EmployeeProfile.department, db.func.count(EmployeeProfile.id)
+    ).filter(EmployeeProfile.employment_status == 'active').group_by(EmployeeProfile.department).all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['Department', 'Active Headcount'])
+    for department, count in rows:
+        writer.writerow([department or 'Unassigned', count])
+
+    return Response(buf.getvalue(), mimetype='text/csv',
+                     headers={'Content-Disposition': 'attachment; filename=headcount.csv'})
+
+
+@admin_bp.route('/analytics/export/pto.csv')
+@login_required
+@admin_required
+def export_pto_csv():
+    import csv
+    import io
+    from flask import Response
+
+    rows = PTOBalance.query.filter_by(year=date.today().year).join(
+        User, PTOBalance.user_id == User.id).order_by(User.name).all()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['Employee', 'Email', 'Year', 'Vacation Used', 'Vacation Total',
+                      'Sick Used', 'Sick Total', 'Personal Used', 'Personal Total', 'Total Remaining'])
+    for p in rows:
+        writer.writerow([p.user.name, p.user.email, p.year,
+                          p.vacation_used, p.vacation_total,
+                          p.sick_used, p.sick_total,
+                          p.personal_used, p.personal_total,
+                          p.total_remaining])
+
+    return Response(buf.getvalue(), mimetype='text/csv',
+                     headers={'Content-Disposition': 'attachment; filename=pto_utilization.csv'})
+
+
+# ── Announcements / Company News (Phase 3) ────────────────────────────────────
+
+@admin_bp.route('/announcements', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def announcements():
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        content = request.form.get('content', '').strip()
+        if not title or not content:
+            flash('Title and content are required.', 'error')
+            return redirect(url_for('admin.announcements'))
+
+        expires_str = request.form.get('expires_at', '')
+        expires_at = datetime.strptime(expires_str, '%Y-%m-%d') if expires_str else None
+
+        ann = Announcement(
+            title=title,
+            content=content,
+            audience=request.form.get('audience', '').strip() or 'all',
+            author_id=current_user.id,
+            published_at=datetime.now(timezone.utc),
+            expires_at=expires_at,
+            is_pinned='is_pinned' in request.form,
+        )
+        db.session.add(ann)
+        db.session.commit()
+        flash(f'Announcement "{title}" published.', 'success')
+        return redirect(url_for('admin.announcements'))
+
+    departments = db.session.query(EmployeeProfile.department).filter(
+        EmployeeProfile.department.isnot(None)).distinct().all()
+    departments = sorted(set(d[0] for d in departments if d[0]))
+
+    all_announcements = Announcement.query.order_by(
+        Announcement.is_pinned.desc(), Announcement.published_at.desc()).all()
+    return render_template('admin/announcements.html', announcements=all_announcements,
+                           departments=departments)
+
+
+@admin_bp.route('/announcements/<int:announcement_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_announcement(announcement_id):
+    ann = Announcement.query.get_or_404(announcement_id)
+
+    if request.method == 'POST':
+        ann.title = request.form.get('title', ann.title).strip()
+        ann.content = request.form.get('content', ann.content).strip()
+        ann.audience = request.form.get('audience', '').strip() or 'all'
+        expires_str = request.form.get('expires_at', '')
+        ann.expires_at = datetime.strptime(expires_str, '%Y-%m-%d') if expires_str else None
+        ann.is_pinned = 'is_pinned' in request.form
+        db.session.commit()
+        flash(f'Announcement "{ann.title}" updated.', 'success')
+        return redirect(url_for('admin.announcements'))
+
+    departments = db.session.query(EmployeeProfile.department).filter(
+        EmployeeProfile.department.isnot(None)).distinct().all()
+    departments = sorted(set(d[0] for d in departments if d[0]))
+    return render_template('admin/announcement_edit.html', ann=ann, departments=departments)
+
+
+@admin_bp.route('/announcements/<int:announcement_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_announcement(announcement_id):
+    ann = Announcement.query.get_or_404(announcement_id)
+    title = ann.title
+    db.session.delete(ann)
+    db.session.commit()
+    flash(f'Announcement "{title}" deleted.', 'success')
+    return redirect(url_for('admin.announcements'))

@@ -1,0 +1,108 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Enrollment Windows — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Open Enrollment Windows</h1>
+        <p class="lead">{{ windows|length }} window{{ 's' if windows|length != 1 }} — employees may only enroll/change benefits while a window is open</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-calendar-range"></i> Windows</h3>
+                </div>
+                <div class="content-card-body p-0">
+                    {% if windows %}
+                    <table class="table table-be mb-0">
+                        <thead>
+                            <tr><th>Name</th><th>Start</th><th>End</th><th>Status</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                        {% for w in windows %}
+                            <tr>
+                                <td><strong>{{ w.name }}</strong></td>
+                                <td>{{ w.start_date.strftime('%b %d, %Y') }}</td>
+                                <td>{{ w.end_date.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    {% if w.is_open_now %}
+                                    <span class="badge" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Open Now</span>
+                                    {% elif w.is_active %}
+                                    <span class="badge" style="background: rgba(243,156,18,0.15); color: #f1c40f;">Active, Not In Range</span>
+                                    {% else %}
+                                    <span class="badge" style="background: rgba(127,140,141,0.15); color: #95a5a6;">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="d-flex gap-1">
+                                    <a href="{{ url_for('admin.edit_enrollment_window', window_id=w.id) }}" class="btn btn-sm btn-be-outline" title="Edit"><i class="bi bi-pencil"></i></a>
+                                    <form method="POST" action="{{ url_for('admin.toggle_enrollment_window', window_id=w.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button class="btn btn-sm btn-be-outline" title="{{ 'Deactivate' if w.is_active else 'Activate' }}">
+                                            <i class="bi bi-{{ 'pause' if w.is_active else 'play' }}"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center py-4" style="color: var(--text-muted);">No enrollment windows yet.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-plus-circle"></i> New Window</h3>
+                </div>
+                <div class="content-card-body">
+                    <form method="POST" action="{{ url_for('admin.enrollment_windows') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Name</label>
+                                <input type="text" name="name" class="form-control" required placeholder="e.g. 2027 Open Enrollment">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" name="start_date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Date</label>
+                                <input type="date" name="end_date" class="form-control" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-be mt-3 w-100"><i class="bi bi-save"></i> Create Window</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

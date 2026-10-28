@@ -1,0 +1,114 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Announcements — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Company Announcements</h1>
+        <p class="lead">{{ announcements|length }} announcement{{ 's' if announcements|length != 1 }} — shown on employee, manager, and admin dashboards</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            {% if announcements %}
+            {% for a in announcements %}
+            <div class="content-card">
+                <div class="content-card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>
+                                {% if a.is_pinned %}<i class="bi bi-pin-angle-fill" style="color: var(--orange);"></i>{% endif %}
+                                {{ a.title }}
+                            </strong>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                Audience: {{ a.audience }} ·
+                                Published {{ a.published_at.strftime('%b %d, %Y') if a.published_at else '—' }}
+                                {% if a.expires_at %} · Expires {{ a.expires_at.strftime('%b %d, %Y') }}{% endif %}
+                                {% if not a.is_active_now %} · <span style="color: var(--text-muted);">(not currently visible)</span>{% endif %}
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <a href="{{ url_for('admin.edit_announcement', announcement_id=a.id) }}" class="btn btn-sm btn-be-outline"><i class="bi bi-pencil"></i></a>
+                            <form method="POST" action="{{ url_for('admin.delete_announcement', announcement_id=a.id) }}" onsubmit="return confirm('Delete this announcement?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-be-outline" style="border-color: var(--danger); color: var(--danger);"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-dim);">{{ a.content }}</div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="content-card">
+                <div class="content-card-body text-center py-4" style="color: var(--text-muted);">No announcements yet.</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-5">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-plus-circle"></i> New Announcement</h3>
+                </div>
+                <div class="content-card-body">
+                    <form method="POST" action="{{ url_for('admin.announcements') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Title</label>
+                                <input type="text" name="title" class="form-control" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Content</label>
+                                <textarea name="content" class="form-control" rows="4" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Audience</label>
+                                <select name="audience" class="form-select">
+                                    <option value="all">Everyone</option>
+                                    {% for d in departments %}
+                                    <option value="{{ d }}">{{ d }} only</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Expires (optional)</label>
+                                <input type="date" name="expires_at" class="form-control">
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_pinned" class="form-check-input" id="is_pinned">
+                                    <label class="form-check-label" for="is_pinned">Pin to top</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-be mt-3 w-100"><i class="bi bi-megaphone"></i> Publish</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

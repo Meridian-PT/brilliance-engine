@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from app import db
 from app.models import (Candidate, Position, Interview, Scorecard, User,
                          CandidateNote, PIPELINE_STAGES, NewHire,
                          EmployeeProfile, PTORequest, TrainingCompletion,
-                         PerformanceReview, ReviewCycle)
+                         PerformanceReview, ReviewCycle, get_active_announcements_for)
 
 manager_bp = Blueprint('manager', __name__, template_folder='../templates/manager')
 
@@ -47,12 +47,15 @@ def dashboard():
         stage = c.current_stage
         by_stage.setdefault(stage, []).append(c)
 
+    announcements = get_active_announcements_for(current_user)
+
     return render_template('manager/dashboard.html',
                            positions=positions,
                            candidates=candidates,
                            active_candidates=active,
                            by_stage=by_stage,
-                           stages=PIPELINE_STAGES)
+                           stages=PIPELINE_STAGES,
+                           announcements=announcements)
 
 
 @manager_bp.route('/candidate/<int:candidate_id>')
@@ -389,3 +392,47 @@ def manager_review(review_id):
     flash('Manager review submitted.', 'success')
     return redirect(url_for('manager.employee_detail',
                             profile_id=EmployeeProfile.query.filter_by(user_id=review.employee_id).first().id))
+
+
+# ── Team Calendar (Phase 3) ──────────────────────────────────────────────────
+
+@manager_bp.route('/team-calendar')
+@login_required
+@manager_required
+def team_calendar():
+    if current_user.role == 'admin':
+        report_profiles = EmployeeProfile.query.all()
+    else:
+        report_profiles = EmployeeProfile.query.filter_by(manager_id=current_user.id).all()
+
+    report_user_ids = [p.user_id for p in report_profiles]
+
+    requests = []
+    if report_user_ids:
+        requests = PTORequest.query.filter(
+            PTORequest.user_id.in_(report_user_ids),
+            PTORequest.status.in_(['approved', 'pending'])
+        ).order_by(PTORequest.start_date).all()
+
+    # Group requests by ISO (year, week) of their start date, for a simple
+    # dependency-light "week list" view instead of a full JS calendar widget.
+    weeks = {}
+    for req in requests:
+        iso_year, iso_week, _ = req.start_date.isocalendar()
+        key = (iso_year, iso_week)
+        weeks.setdefault(key, []).append(req)
+
+    week_groups = []
+    for (iso_year, iso_week), reqs in sorted(weeks.items()):
+        week_start = date.fromisocalendar(iso_year, iso_week, 1)
+        week_end = date.fromisocalendar(iso_year, iso_week, 7)
+        week_groups.append({
+            'iso_year': iso_year,
+            'iso_week': iso_week,
+            'week_start': week_start,
+            'week_end': week_end,
+            'requests': reqs,
+        })
+
+    return render_template('manager/team_calendar.html',
+                           week_groups=week_groups, report_count=len(report_profiles))

@@ -10,6 +10,7 @@
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.employees') }}"><i class="bi bi-people"></i> My Team</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'manager.team_calendar' %} active{% endif %}" href="{{ url_for('manager.team_calendar') }}"><i class="bi bi-calendar3"></i> Team Calendar</a></li>
 {% elif current_user.role == 'admin' %}
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
@@ -20,4 +21,9 @@
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.benefits' %} active{% endif %}" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.enrollment_windows' %} active{% endif %}" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.accrual_policies' %} active{% endif %}" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.analytics' %} active{% endif %}" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.announcements' %} active{% endif %}" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
 {% endif %}

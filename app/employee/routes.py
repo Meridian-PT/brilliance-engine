@@ -7,7 +7,10 @@ from app.models import (User, Document, FileAttachment, EmployeeProfile, Policy,
                          PolicyAcknowledgment, ContentAccessLog, AssessmentTemplate,
                          AssessmentResult, TrainingCourse, TrainingModule,
                          TrainingCompletion, PTOBalance, PTORequest, ReviewCycle,
-                         PerformanceReview, CompensationRecord, BonusRecord)
+                         PerformanceReview, CompensationRecord, BonusRecord,
+                         BenefitPlan, BenefitEnrollment, get_open_enrollment_window,
+                         get_active_announcements_for)
+from app.audit import log_change
 
 employee_bp = Blueprint('employee', __name__, template_folder='../templates/employee')
 
@@ -58,6 +61,8 @@ def dashboard():
     active_reviews = PerformanceReview.query.filter_by(
         employee_id=current_user.id, status='pending_self').count()
 
+    announcements = get_active_announcements_for(current_user)
+
     return render_template('employee/dashboard.html',
                            profile=profile,
                            acked_policies=acked_policies,
@@ -69,7 +74,8 @@ def dashboard():
                            recent_acks=recent_acks,
                            recent_completions=recent_completions,
                            pending_pto=pending_pto,
-                           active_reviews=active_reviews)
+                           active_reviews=active_reviews,
+                           announcements=announcements)
 
 
 # ── Policies ─────────────────────────────────────────────────────────────────
@@ -457,8 +463,84 @@ def my_profile():
     bonus_history = BonusRecord.query.filter_by(user_id=current_user.id) \
         .order_by(BonusRecord.award_date.desc()).all()
 
+    # ── Benefits (Phase 3) ──
+    my_enrollments = BenefitEnrollment.query.filter_by(user_id=current_user.id) \
+        .order_by(BenefitEnrollment.status.desc(), BenefitEnrollment.effective_date.desc()).all()
+    enrolled_plan_ids = {e.plan_id for e in my_enrollments if e.status != 'ended'}
+    open_window = get_open_enrollment_window()
+    available_plans = []
+    if open_window:
+        available_plans = [p for p in BenefitPlan.query.filter_by(is_active=True)
+                           .order_by(BenefitPlan.plan_type, BenefitPlan.name).all()
+                           if p.id not in enrolled_plan_ids]
+
     return render_template('employee/my_profile.html', profile=profile,
-                           current_comp=current_comp, bonus_history=bonus_history)
+                           current_comp=current_comp, bonus_history=bonus_history,
+                           my_enrollments=my_enrollments, open_window=open_window,
+                           available_plans=available_plans)
+
+
+@employee_bp.route('/benefits/enroll', methods=['POST'])
+@login_required
+@employee_required
+def enroll_benefit():
+    window = get_open_enrollment_window()
+    if not window:
+        flash('Enrollment is closed. There is no active open enrollment window.', 'error')
+        return redirect(url_for('employee.my_profile'))
+
+    plan_id = request.form.get('plan_id', '')
+    plan = BenefitPlan.query.filter_by(id=plan_id, is_active=True).first()
+    if not plan:
+        flash('That benefit plan is not available.', 'error')
+        return redirect(url_for('employee.my_profile'))
+
+    existing = BenefitEnrollment.query.filter_by(
+        user_id=current_user.id, plan_id=plan.id).filter(
+        BenefitEnrollment.status != 'ended').first()
+    if existing:
+        flash(f'You are already enrolled in "{plan.name}".', 'info')
+        return redirect(url_for('employee.my_profile'))
+
+    enrollment = BenefitEnrollment(
+        user_id=current_user.id,
+        plan_id=plan.id,
+        coverage_level=request.form.get('coverage_level', 'employee'),
+        dependents_count=int(request.form.get('dependents_count', 0) or 0),
+        effective_date=date.today(),
+        status='active',
+    )
+    db.session.add(enrollment)
+    db.session.flush()
+    log_change(current_user, 'BenefitEnrollment', enrollment.id, 'status',
+               None, f'enrolled in {plan.name} ({enrollment.coverage_level})', action='create')
+    db.session.commit()
+    flash(f'Enrolled in "{plan.name}".', 'success')
+    return redirect(url_for('employee.my_profile'))
+
+
+@employee_bp.route('/benefits/<int:enrollment_id>/end', methods=['POST'])
+@login_required
+@employee_required
+def end_benefit_enrollment(enrollment_id):
+    enrollment = BenefitEnrollment.query.get_or_404(enrollment_id)
+    if enrollment.user_id != current_user.id:
+        flash('Access denied.', 'error')
+        return redirect(url_for('employee.my_profile'))
+
+    window = get_open_enrollment_window()
+    if not window:
+        flash('Enrollment is closed. Benefit changes are only allowed during an open enrollment window.', 'error')
+        return redirect(url_for('employee.my_profile'))
+
+    old_status = enrollment.status
+    enrollment.status = 'ended'
+    enrollment.end_date = date.today()
+    log_change(current_user, 'BenefitEnrollment', enrollment.id, 'status',
+               old_status, 'ended', action='update')
+    db.session.commit()
+    flash(f'Ended enrollment in "{enrollment.plan.name}".', 'success')
+    return redirect(url_for('employee.my_profile'))
 
 
 @employee_bp.route('/profile/edit', methods=['POST'])

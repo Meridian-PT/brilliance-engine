@@ -1,0 +1,186 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Analytics — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Reporting &amp; Analytics</h1>
+        <p class="lead">Live dashboards over the current employee system-of-record</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-diagram-2"></i> Headcount by Department</h3>
+                    <a href="{{ url_for('admin.export_headcount_csv') }}" class="btn btn-sm btn-be-outline"><i class="bi bi-download"></i> CSV</a>
+                </div>
+                <div class="content-card-body"><canvas id="headcountChart" height="220"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-pie-chart"></i> Employment Status Breakdown</h3>
+                </div>
+                <div class="content-card-body"><canvas id="statusChart" height="220"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-graph-down-arrow"></i> Turnover by Month</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if turnover_labels %}
+                    <canvas id="turnoverChart" height="220"></canvas>
+                    {% else %}
+                    <div class="text-center py-4" style="color: var(--text-muted);">No terminations on file.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-calendar2-heart"></i> PTO Utilization</h3>
+                    <a href="{{ url_for('admin.export_pto_csv') }}" class="btn btn-sm btn-be-outline"><i class="bi bi-download"></i> CSV</a>
+                </div>
+                <div class="content-card-body">
+                    {% if pto_labels %}
+                    <canvas id="ptoChart" height="220"></canvas>
+                    {% else %}
+                    <div class="text-center py-4" style="color: var(--text-muted);">No PTO balances on file for this year.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-shield-check"></i> Policy Acknowledgment Rate</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if policy_labels %}
+                    <canvas id="policyChart" height="220"></canvas>
+                    {% else %}
+                    <div class="text-center py-4" style="color: var(--text-muted);">No policies requiring acknowledgment.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-mortarboard"></i> Training Completion Rate</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if training_labels %}
+                    <canvas id="trainingChart" height="220"></canvas>
+                    {% else %}
+                    <div class="text-center py-4" style="color: var(--text-muted);">No active training courses.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.color = '#8899aa';
+Chart.defaults.borderColor = 'rgba(127,208,238,0.14)';
+
+new Chart(document.getElementById('headcountChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ headcount_labels|tojson }},
+        datasets: [{ label: 'Active Headcount', data: {{ headcount_values|tojson }}, backgroundColor: '#2a93c1' }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+});
+
+new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+        labels: {{ status_labels|tojson }},
+        datasets: [{ data: {{ status_values|tojson }}, backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c', '#8e44ad', '#2a93c1'] }]
+    }
+});
+
+{% if turnover_labels %}
+new Chart(document.getElementById('turnoverChart'), {
+    type: 'line',
+    data: {
+        labels: {{ turnover_labels|tojson }},
+        datasets: [{ label: 'Terminations', data: {{ turnover_values|tojson }}, borderColor: '#f1420b', backgroundColor: 'rgba(241,66,11,0.15)', fill: true, tension: 0.2 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+});
+{% endif %}
+
+{% if pto_labels %}
+new Chart(document.getElementById('ptoChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ pto_labels|tojson }},
+        datasets: [
+            { label: 'Used', data: {{ pto_used|tojson }}, backgroundColor: '#f1420b' },
+            { label: 'Total', data: {{ pto_total|tojson }}, backgroundColor: 'rgba(42,147,193,0.35)' }
+        ]
+    },
+    options: { scales: { y: { beginAtZero: true } } }
+});
+{% endif %}
+
+{% if policy_labels %}
+new Chart(document.getElementById('policyChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ policy_labels|tojson }},
+        datasets: [{ label: '% Acknowledged', data: {{ policy_values|tojson }}, backgroundColor: '#27AE60' }]
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, max: 100 } } }
+});
+{% endif %}
+
+{% if training_labels %}
+new Chart(document.getElementById('trainingChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ training_labels|tojson }},
+        datasets: [{ label: '% Completed', data: {{ training_values|tojson }}, backgroundColor: '#3498DB' }]
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, max: 100 } } }
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Edit {{ policy.name }} — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <a href="{{ url_for('admin.accrual_policies') }}" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">
+            <i class="bi bi-arrow-left"></i> Back to Accrual Policies
+        </a>
+        <h1 class="mt-2">{{ policy.name }}</h1>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card" style="max-width: 700px;">
+        <div class="content-card-body">
+            <form method="POST" action="{{ url_for('admin.edit_accrual_policy', policy_id=policy.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label class="form-label">Name</label>
+                        <input type="text" name="name" class="form-control" value="{{ policy.name }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Leave Type</label>
+                        <select name="leave_type" class="form-select" required>
+                            {% for t in leave_types %}
+                            <option value="{{ t }}" {% if policy.leave_type == t %}selected{% endif %}>{{ t|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Period</label>
+                        <select name="period" class="form-select">
+                            {% for pd in periods %}
+                            <option value="{{ pd }}" {% if policy.period == pd %}selected{% endif %}>{{ pd|replace('_', ' ')|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Rate per Period</label>
+                        <input type="number" step="0.01" min="0" name="rate_per_period" class="form-control" value="{{ policy.rate_per_period }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Annual Cap</label>
+                        <input type="number" step="0.01" min="0" name="annual_cap" class="form-control" value="{{ policy.annual_cap if policy.annual_cap is not none else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Carryover Max</label>
+                        <input type="number" step="0.01" min="0" name="carryover_max" class="form-control" value="{{ policy.carryover_max if policy.carryover_max is not none else '' }}">
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-check">
+                            <input type="checkbox" name="is_active" class="form-check-input" id="is_active" {% if policy.is_active %}checked{% endif %}>
+                            <label class="form-check-label" for="is_active">Active</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-be mt-3"><i class="bi bi-save"></i> Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

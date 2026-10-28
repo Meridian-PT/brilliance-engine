@@ -102,7 +102,7 @@
                 <tbody>
                     {% for req in requests %}
                     <tr>
-                        <td><span style="text-transform: capitalize;">{{ req.leave_type }}</span></td>
+                        <td><span style="text-transform: capitalize;">{{ req.leave_type|replace('_', ' ') }}</span></td>
                         <td>{{ req.start_date.strftime('%b %d') }} — {{ req.end_date.strftime('%b %d, %Y') }}</td>
                         <td>{{ req.days_requested|int }}</td>
                         <td>

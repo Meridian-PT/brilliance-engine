@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, date, timezone
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
@@ -651,3 +651,171 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f'<AuditLog {self.action} {self.entity_type}#{self.entity_id}.{self.field_name}>'
+
+
+# ── Benefits Administration (Phase 3) ─────────────────────────────────────────
+
+class BenefitPlan(db.Model):
+    """Admin-managed benefit plan offering (health, dental, vision, life, RRSP, etc)."""
+    __tablename__ = 'benefit_plans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    plan_type = db.Column(db.String(30), nullable=False)  # health, dental, vision, life, rrsp, other
+    provider = db.Column(db.String(150))
+    tier = db.Column(db.String(50))  # e.g. Standard, Premium, Executive
+    description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    enrollments = db.relationship('BenefitEnrollment', backref='plan', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<BenefitPlan {self.name} ({self.plan_type})>'
+
+
+class BenefitEnrollment(db.Model):
+    """An employee's enrollment in a benefit plan."""
+    __tablename__ = 'benefit_enrollments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    plan_id = db.Column(db.Integer, db.ForeignKey('benefit_plans.id'), nullable=False)
+    coverage_level = db.Column(db.String(30), default='employee')  # employee, employee_spouse, family
+    dependents_count = db.Column(db.Integer, default=0)
+    effective_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date)
+    status = db.Column(db.String(20), default='active')  # active, pending, ended
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f'<BenefitEnrollment user={self.user_id} plan={self.plan_id} status={self.status}>'
+
+
+class OpenEnrollmentWindow(db.Model):
+    """A named period during which employees may enroll in / change benefits."""
+    __tablename__ = 'open_enrollment_windows'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    @property
+    def is_open_now(self):
+        today = date.today()
+        return bool(self.is_active and self.start_date <= today <= self.end_date)
+
+    def __repr__(self):
+        return f'<OpenEnrollmentWindow {self.name} {self.start_date} - {self.end_date}>'
+
+
+def get_open_enrollment_window():
+    """Return the first currently-open OpenEnrollmentWindow, or None if enrollment is closed."""
+    today = date.today()
+    return OpenEnrollmentWindow.query.filter(
+        OpenEnrollmentWindow.is_active == True,
+        OpenEnrollmentWindow.start_date <= today,
+        OpenEnrollmentWindow.end_date >= today,
+    ).first()
+
+
+# ── Leave Management — Accrual Policies (Phase 3) ─────────────────────────────
+
+class AccrualPolicy(db.Model):
+    """Admin-defined accrual rule for a leave type (e.g. 1.25 vacation days/month)."""
+    __tablename__ = 'accrual_policies'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    leave_type = db.Column(db.String(30), nullable=False)  # vacation, sick, personal
+    rate_per_period = db.Column(db.Float, nullable=False)
+    period = db.Column(db.String(20), default='monthly')  # monthly, per_pay, annual
+    annual_cap = db.Column(db.Float)
+    carryover_max = db.Column(db.Float)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f'<AccrualPolicy {self.name} {self.rate_per_period}/{self.period}>'
+
+
+# Leave types that are statutory/categorical rather than drawn from the standard
+# vacation/sick/personal PTOBalance pools. PTORequest.leave_type already accepts
+# any string (see models.py PTORequest comment), so no schema change is needed —
+# these are simply additional accepted values with no balance cap, surfaced in
+# the employee request form and left alone by any balance-deduction logic.
+STATUTORY_LEAVE_TYPES = ['bereavement', 'parental', 'jury_duty']
+
+
+# ── Company Announcements (Phase 3) ───────────────────────────────────────────
+
+class Announcement(db.Model):
+    """Company news item shown on employee/manager/admin dashboards."""
+    __tablename__ = 'announcements'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    audience = db.Column(db.String(100), default='all')  # 'all' or a department value
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    published_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime)
+    is_pinned = db.Column(db.Boolean, default=False)
+
+    author = db.relationship('User', foreign_keys=[author_id])
+
+    @property
+    def is_active_now(self):
+        # SQLite's DateTime columns round-trip as timezone-naive, but
+        # `default=` on this model (like every other model in this app)
+        # produces a timezone-aware value at creation time, before the first
+        # flush/commit. Normalize both sides to naive UTC before comparing
+        # so this works whether the instance is freshly-created-in-session
+        # or freshly-queried-from-the-database.
+        now = _naive_utc(datetime.now(timezone.utc))
+        published = _naive_utc(self.published_at)
+        expires = _naive_utc(self.expires_at)
+        if published and published > now:
+            return False
+        if expires and expires < now:
+            return False
+        return True
+
+    def __repr__(self):
+        return f'<Announcement {self.title} audience={self.audience}>'
+
+
+def _naive_utc(dt):
+    """Strip tzinfo from an aware datetime (converting to UTC first), or
+    pass through a naive datetime / None unchanged. See Announcement.is_active_now."""
+    if dt is not None and dt.tzinfo is not None:
+        return dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+def get_active_announcements_for(user, limit=5):
+    """Active (published, not expired) announcements visible to this user,
+    matching audience 'all' or the user's EmployeeProfile department. Pinned
+    items are returned first."""
+    now = _naive_utc(datetime.now(timezone.utc))
+    department = None
+    profile = EmployeeProfile.query.filter_by(user_id=user.id).first()
+    if profile:
+        department = profile.department
+
+    audiences = ['all']
+    if department:
+        audiences.append(department)
+
+    query = Announcement.query.filter(
+        db.or_(Announcement.published_at.is_(None), Announcement.published_at <= now),
+        db.or_(Announcement.expires_at.is_(None), Announcement.expires_at >= now),
+        Announcement.audience.in_(audiences),
+    )
+    return query.order_by(Announcement.is_pinned.desc(),
+                           Announcement.published_at.desc()).limit(limit).all()
