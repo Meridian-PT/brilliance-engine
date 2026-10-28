@@ -1,0 +1,110 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ user.name }} — Directory — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+{% include "directory/_role_nav.html" %}
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+{% set parts = user.name.split() %}
+{% set initials = (parts[0][0] + parts[-1][0])|upper if parts|length > 1 else user.name[:2]|upper %}
+
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <a href="{{ url_for('directory.index') }}" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">
+            <i class="bi bi-arrow-left"></i> Back to Directory
+        </a>
+        <h1 class="mt-2">{{ user.name }}</h1>
+        <p class="lead">{{ profile.title if profile and profile.title else 'Pure Technology Team Member' }}</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="content-card">
+                <div class="content-card-body text-center">
+                    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--orange)); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 2rem; font-weight: 700; color: white;">
+                        {{ initials }}
+                    </div>
+                    <h4 style="margin-bottom: 0.25rem;">{{ user.name }}</h4>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">{{ user.email }}</p>
+
+                    {% if profile and profile.title %}<div style="color: var(--blue); font-weight: 600;">{{ profile.title }}</div>{% endif %}
+                    {% if profile and profile.department %}<div style="color: var(--text-muted); font-size: 0.9rem;">{{ profile.department }}</div>{% endif %}
+                    {% if not profile %}<div style="color: var(--text-muted); font-size: 0.85rem; text-transform: capitalize;">{{ user.role }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            {% if profile %}
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-person-badge"></i> Employee Details</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="row g-3" style="font-size: 0.9rem;">
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Employee Number</div>
+                            <div style="font-weight: 500;">{{ profile.employee_number or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Start Date</div>
+                            <div style="font-weight: 500;">{{ profile.start_date.strftime('%B %d, %Y') if profile.start_date else '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Department</div>
+                            <div style="font-weight: 500;">{{ profile.department or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Manager</div>
+                            <div style="font-weight: 500;">
+                                {% if profile.manager %}
+                                <a href="{{ url_for('directory.profile_card', user_id=profile.manager.id) }}" style="color: var(--blue); text-decoration: none;">{{ profile.manager.name }}</a>
+                                {% else %}—{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Phone</div>
+                            <div style="font-weight: 500;">{{ profile.phone or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Email</div>
+                            <div style="font-weight: 500;">{{ user.email }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-telephone"></i> Emergency Contact</h3>
+                </div>
+                <div class="content-card-body">
+                    <div class="row g-3" style="font-size: 0.9rem;">
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Contact Name</div>
+                            <div style="font-weight: 500;">{{ profile.emergency_contact_name or '—' }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Contact Phone</div>
+                            <div style="font-weight: 500;">{{ profile.emergency_contact_phone or '—' }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="content-card">
+                <div class="content-card-body text-center py-4" style="color: var(--text-muted);">
+                    <i class="bi bi-person-badge" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">No detailed employee profile on file yet for {{ user.name }} ({{ user.role|capitalize }}). Contact HR to add one.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -30,6 +30,7 @@ def create_app(config_name='default'):
     from app.admin.routes import admin_bp
     from app.employee.routes import employee_bp
     from app.files.routes import files_bp
+    from app.directory.routes import directory_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(candidate_bp, url_prefix='/candidate')
@@ -38,6 +39,7 @@ def create_app(config_name='default'):
     app.register_blueprint(manager_bp, url_prefix='/manager')
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(files_bp)
+    app.register_blueprint(directory_bp, url_prefix='/directory')
 
     from app.models import User
 

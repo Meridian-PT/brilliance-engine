@@ -1,0 +1,150 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Org Chart — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+{% include "directory/_role_nav.html" %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.orgchart-wrap {
+    overflow-x: auto;
+    padding: 1rem 0 2rem;
+}
+.orgchart-tree, .orgchart-tree ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+.orgchart-tree ul {
+    display: flex;
+    padding-top: 2rem;
+    position: relative;
+}
+.orgchart-tree li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0.75rem;
+    position: relative;
+}
+/* Connector lines */
+.orgchart-tree li::before,
+.orgchart-tree li::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    border-top: 2px solid var(--border);
+    width: 50%;
+    height: 2rem;
+}
+.orgchart-tree li::before { left: 0; }
+.orgchart-tree li::after { right: 0; }
+.orgchart-tree li:only-child::before,
+.orgchart-tree li:only-child::after { display: none; }
+.orgchart-tree li:first-child::before,
+.orgchart-tree li:last-child::after { border: none; }
+.orgchart-tree li:last-child::before { border-right: 2px solid var(--border); border-radius: 0 0 0 0; }
+.orgchart-tree li:first-child::after { border-left: 2px solid var(--border); }
+.orgchart-tree > li { padding-top: 0; }
+.orgchart-tree > li::before, .orgchart-tree > li::after { display: none; }
+.orgchart-tree li > ul::before {
+    content: '';
+    position: absolute;
+    top: -2rem;
+    left: 50%;
+    border-left: 2px solid var(--border);
+    height: 2rem;
+}
+.orgchart-node {
+    display: inline-block;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1rem;
+    min-width: 160px;
+    text-decoration: none;
+    transition: all 0.2s;
+    position: relative;
+    z-index: 1;
+}
+.orgchart-node:hover {
+    border-color: var(--blue);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+.orgchart-node .oc-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--orange));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700; color: white;
+    margin: 0 auto 0.4rem;
+}
+.orgchart-node .oc-name { color: var(--text); font-weight: 600; font-size: 0.9rem; }
+.orgchart-node .oc-title { color: var(--blue); font-size: 0.75rem; }
+.orgchart-node .oc-dept { color: var(--text-muted); font-size: 0.7rem; }
+.orgchart-node.oc-synthetic { border-style: dashed; }
+.orgchart-node.oc-cycle { border-color: var(--warning); opacity: 0.7; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Org Chart</h1>
+        <p class="lead">Reporting structure built from employee profile data</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    {% if not has_nodes %}
+    <div class="content-card">
+        <div class="content-card-body text-center py-4" style="color: var(--text-muted);">
+            <i class="bi bi-diagram-3" style="font-size: 2rem;"></i>
+            <p class="mt-2 mb-0">No employee profile data yet — the org chart will populate as HR adds team members.</p>
+        </div>
+    </div>
+    {% else %}
+
+    {% macro initials(name) %}{% set parts = name.split() %}{{ (parts[0][0] + parts[-1][0])|upper if parts|length > 1 else name[:2]|upper }}{% endmacro %}
+
+    {% macro render_node(node) %}
+    <li>
+        <a href="{{ url_for('directory.profile_card', user_id=node.id) }}"
+           class="orgchart-node{% if node.synthetic %} oc-synthetic{% endif %}{% if node.is_cycle %} oc-cycle{% endif %}">
+            <div class="oc-avatar">{{ initials(node.name) }}</div>
+            <div class="oc-name">{{ node.name }}</div>
+            <div class="oc-title">{{ node.title }}</div>
+            {% if node.department %}<div class="oc-dept">{{ node.department }}</div>{% endif %}
+            {% if node.is_cycle %}<div class="oc-dept"><i class="bi bi-exclamation-triangle"></i> cycle</div>{% endif %}
+        </a>
+        {% if node.children %}
+        <ul>
+            {% for child in node.children %}
+            {{ render_node(child) }}
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </li>
+    {% endmacro %}
+
+    <div class="orgchart-wrap">
+        {% for tree in trees %}
+        <ul class="orgchart-tree" style="margin-bottom: 2rem;">
+            {{ render_node(tree) }}
+        </ul>
+        {% endfor %}
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-body" style="font-size: 0.85rem; color: var(--text-muted);">
+            <i class="bi bi-info-circle"></i> Dashed border = manager on record without a full employee profile yet.
+            {{ "Multiple trees shown — these are separate reporting lines with no common manager on file." if trees|length > 1 else "" }}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
