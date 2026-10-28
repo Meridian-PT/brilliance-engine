@@ -16,6 +16,8 @@
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
 <li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.offboarding_cases' %} active{% endif %}" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.payroll_export' %} active{% endif %}" href="{{ url_for('admin.payroll_export') }}"><i class="bi bi-cash-stack"></i> Payroll Export</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
 {% endblock %}
@@ -109,6 +111,21 @@
                 </div>
             </div>
         </div>
+
+        <div class="col-lg-6">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-clock-history"></i> Approved Hours (Month to Date)</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if hours_labels %}
+                    <canvas id="hoursChart" height="220"></canvas>
+                    {% else %}
+                    <div class="text-center py-4" style="color: var(--text-muted);">No approved time entries yet this month.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -180,6 +197,17 @@ new Chart(document.getElementById('trainingChart'), {
         datasets: [{ label: '% Completed', data: {{ training_values|tojson }}, backgroundColor: '#3498DB' }]
     },
     options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, max: 100 } } }
+});
+{% endif %}
+
+{% if hours_labels %}
+new Chart(document.getElementById('hoursChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ hours_labels|tojson }},
+        datasets: [{ label: 'Approved Hours', data: {{ hours_values|tojson }}, backgroundColor: '#f1420b' }]
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
 });
 {% endif %}
 </script>

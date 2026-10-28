@@ -798,6 +798,81 @@ def _naive_utc(dt):
     return dt
 
 
+# ── Offboarding (Phase 4 — Lifecycle & Integrations) ──────────────────────────
+
+class OffboardingCase(db.Model):
+    """A single employee's offboarding process (mirrors NewHire for onboarding)."""
+    __tablename__ = 'offboarding_cases'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    initiated_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    reason = db.Column(db.Text)
+    last_day = db.Column(db.Date)
+    status = db.Column(db.String(20), default='in_progress')  # in_progress, complete
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    initiator = db.relationship('User', foreign_keys=[initiated_by])
+    tasks = db.relationship('OffboardingTask', backref='case', lazy='dynamic',
+                            order_by='OffboardingTask.due_offset_days')
+
+    @property
+    def progress_pct(self):
+        total = self.tasks.count()
+        if total == 0:
+            return 0
+        done = self.tasks.filter_by(completed=True).count()
+        return int(done / total * 100)
+
+    def __repr__(self):
+        return f'<OffboardingCase user={self.user_id} status={self.status}>'
+
+
+class OffboardingTask(db.Model):
+    """A single checklist item within an OffboardingCase (mirrors OnboardingTask)."""
+    __tablename__ = 'offboarding_tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('offboarding_cases.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    category = db.Column(db.String(50))  # equipment, access, hr, finance, exit_interview
+    assigned_to = db.Column(db.String(20))  # employee, manager, hr, it
+    due_offset_days = db.Column(db.Integer, default=0)  # days relative to last_day (may be negative)
+    completed = db.Column(db.Boolean, default=False)
+    completed_at = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return f'<OffboardingTask {self.title}>'
+
+
+# ── Time Tracking (Phase 4 — Lifecycle & Integrations) ────────────────────────
+
+class TimeEntry(db.Model):
+    """A single logged block of time against a project/task. `source='manual'`
+    for employee self-entry via the portal, `source='imported'` for rows
+    created by the external ingestion API (see app/api/routes.py)."""
+    __tablename__ = 'time_entries'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    work_date = db.Column(db.Date, nullable=False)
+    hours = db.Column(db.Numeric(5, 2), nullable=False)
+    project_or_task = db.Column(db.String(200))
+    description = db.Column(db.Text)
+    status = db.Column(db.String(20), default='submitted')  # submitted, approved, rejected
+    source = db.Column(db.String(20), default='manual')  # manual, imported
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    approver = db.relationship('User', foreign_keys=[approved_by])
+
+    def __repr__(self):
+        return f'<TimeEntry user={self.user_id} {self.work_date} {self.hours}h status={self.status}>'
+
+
 def get_active_announcements_for(user, limit=5):
     """Active (published, not expired) announcements visible to this user,
     matching audience 'all' or the user's EmployeeProfile department. Pinned

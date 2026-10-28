@@ -1,0 +1,61 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ case.user.name }} — Offboarding — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.employees') }}"><i class="bi bi-people"></i> My Team</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('manager.team_offboarding') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('manager.team_offboarding') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Offboarding
+    </a>
+
+    <div class="content-card mt-3">
+        <div class="content-card-body">
+            <h3 style="margin: 0;">{{ case.user.name }}</h3>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">
+                {{ case.user.email }}{% if profile and profile.department %} | {{ profile.department }}{% endif %}
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                Last day: <strong>{{ case.last_day.strftime('%b %d, %Y') if case.last_day else '—' }}</strong>
+                · {{ case.progress_pct }}% complete
+            </div>
+            <div class="progress mt-3" style="height: 8px;">
+                <div class="progress-bar" role="progressbar" style="width: {{ case.progress_pct }}%; background: #f1420b;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-check2-square"></i> Offboarding Checklist</h3>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Read-only — managed by HR</span>
+        </div>
+        <div class="content-card-body">
+            {% for task in tasks %}
+            <div class="task-item">
+                <div class="task-checkbox {% if task.completed %}done{% endif %}">
+                    {% if task.completed %}<i class="bi bi-check"></i>{% endif %}
+                </div>
+                <div>
+                    <div class="task-title {% if task.completed %}done{% endif %}">{{ task.title }}</div>
+                    {% if task.description %}
+                    <div class="task-meta">{{ task.description }}</div>
+                    {% endif %}
+                    <div class="task-meta">
+                        {% if task.category %}<span style="text-transform: capitalize;">{{ task.category|replace('_', ' ') }}</span> · {% endif %}
+                        {% if task.assigned_to %}<i class="bi bi-person"></i> {{ task.assigned_to|capitalize }}{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">No checklist items on file.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

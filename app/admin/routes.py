@@ -1,5 +1,5 @@
 import uuid
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime, date, timezone
 from decimal import Decimal, InvalidOperation
@@ -12,7 +12,8 @@ from app.models import (User, Candidate, Position, Interview, Scorecard,
                          PTORequest, ReviewCycle, PerformanceReview,
                          CompensationRecord, BonusRecord, SalaryBand, AuditLog,
                          BenefitPlan, BenefitEnrollment, OpenEnrollmentWindow,
-                         AccrualPolicy, Announcement, get_active_announcements_for)
+                         AccrualPolicy, Announcement, get_active_announcements_for,
+                         OffboardingCase, OffboardingTask, TimeEntry)
 from app.audit import log_change
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
@@ -1002,13 +1003,24 @@ def analytics():
         training_labels.append(course.title)
         training_values.append(int(completed / employee_count * 100) if employee_count else 0)
 
+    # Approved hours by employee, current month to date (Phase 4 — Time Tracking)
+    month_start = date.today().replace(day=1)
+    hours_rows = db.session.query(
+        User.name, db.func.sum(TimeEntry.hours)
+    ).join(User, TimeEntry.user_id == User.id).filter(
+        TimeEntry.status == 'approved', TimeEntry.work_date >= month_start
+    ).group_by(User.name).order_by(User.name).all()
+    hours_labels = [r[0] for r in hours_rows]
+    hours_values = [float(r[1]) for r in hours_rows]
+
     return render_template('admin/analytics.html',
                            headcount_labels=headcount_labels, headcount_values=headcount_values,
                            status_labels=status_labels, status_values=status_values,
                            turnover_labels=turnover_labels, turnover_values=turnover_values,
                            pto_labels=pto_labels, pto_used=pto_used, pto_total=pto_total,
                            policy_labels=policy_labels, policy_values=policy_values,
-                           training_labels=training_labels, training_values=training_values)
+                           training_labels=training_labels, training_values=training_values,
+                           hours_labels=hours_labels, hours_values=hours_values)
 
 
 @admin_bp.route('/analytics/export/headcount.csv')
@@ -1132,3 +1144,289 @@ def delete_announcement(announcement_id):
     db.session.commit()
     flash(f'Announcement "{title}" deleted.', 'success')
     return redirect(url_for('admin.announcements'))
+
+
+# ── Offboarding (Phase 4 — Lifecycle & Integrations) ──────────────────────────
+
+OFFBOARDING_CATEGORIES = ['equipment', 'access', 'hr', 'finance', 'exit_interview']
+OFFBOARDING_ASSIGNEES = ['employee', 'manager', 'hr', 'it']
+
+
+def _create_default_offboarding_tasks(case_id):
+    """Create the standard offboarding checklist (mirrors _create_default_tasks
+    for onboarding). due_offset_days is relative to the case's last_day and
+    may be negative (before the last day) or positive (after it, e.g. final pay)."""
+    existing = OffboardingTask.query.filter_by(case_id=case_id).count()
+    if existing > 0:
+        return
+
+    tasks = [
+        # title, category, assigned_to, due_offset_days, description
+        ('Complete knowledge transfer / handover', 'hr', 'manager', -5,
+         'Ensure outstanding work and institutional knowledge is documented and transferred to the team.'),
+        ('Conduct exit interview', 'exit_interview', 'hr', -3,
+         'HR conducts an exit interview and captures feedback.'),
+        ('Collect company equipment', 'equipment', 'it', 0,
+         'Collect laptop, badge, access cards, and any other company property.'),
+        ('Revoke system and access accounts', 'access', 'it', 0,
+         'Disable email, Slack, VPN, and all internal system accounts effective the last day.'),
+        ('Process benefits termination', 'hr', 'hr', 0,
+         'End benefit plan enrollments effective the last day (or per plan rules).'),
+        ('Calculate and process final pay', 'finance', 'hr', 5,
+         'Final paycheck, including any accrued/unused vacation payout per applicable regulations.'),
+    ]
+
+    for title, category, assigned_to, due_offset_days, description in tasks:
+        task = OffboardingTask(
+            case_id=case_id,
+            title=title,
+            category=category,
+            assigned_to=assigned_to,
+            due_offset_days=due_offset_days,
+            description=description,
+        )
+        db.session.add(task)
+
+
+@admin_bp.route('/offboarding')
+@login_required
+@admin_required
+def offboarding_cases():
+    cases = OffboardingCase.query.order_by(OffboardingCase.created_at.desc()).all()
+    active_employees = EmployeeProfile.query.filter_by(employment_status='active') \
+        .join(User, EmployeeProfile.user_id == User.id).order_by(User.name).all()
+    return render_template('admin/offboarding_cases.html', cases=cases, active_employees=active_employees)
+
+
+@admin_bp.route('/offboarding/initiate/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def initiate_offboarding(user_id):
+    user = User.query.get_or_404(user_id)
+    existing_case = OffboardingCase.query.filter_by(user_id=user_id, status='in_progress').first()
+
+    if request.method == 'POST':
+        if existing_case:
+            flash(f'An offboarding case is already in progress for {user.name}.', 'error')
+            return redirect(url_for('admin.offboarding_detail', case_id=existing_case.id))
+
+        last_day_str = request.form.get('last_day', '')
+        if not last_day_str:
+            flash('Last day is required.', 'error')
+            return redirect(url_for('admin.initiate_offboarding', user_id=user_id))
+
+        last_day = datetime.strptime(last_day_str, '%Y-%m-%d').date()
+        reason = request.form.get('reason', '').strip() or None
+
+        case = OffboardingCase(
+            user_id=user_id,
+            initiated_by=current_user.id,
+            reason=reason,
+            last_day=last_day,
+            status='in_progress',
+        )
+        db.session.add(case)
+        db.session.flush()  # assign case.id before use below
+
+        log_change(current_user, 'OffboardingCase', case.id, 'status',
+                   None, f'initiated, last day {last_day}', action='create')
+
+        # Setting up offboarding flips EmployeeProfile to terminated — audited,
+        # same pattern as admin.edit_employee_profile's sensitive-field handling.
+        profile = EmployeeProfile.query.filter_by(user_id=user_id).first()
+        if not profile:
+            profile = EmployeeProfile(user_id=user_id)
+            db.session.add(profile)
+            db.session.flush()
+
+        old_status = profile.employment_status
+        profile.employment_status = 'terminated'
+        profile.termination_date = last_day
+        profile.termination_reason = reason or profile.termination_reason
+        if old_status != 'terminated':
+            log_change(current_user, 'EmployeeProfile', profile.id, 'employment_status',
+                       old_status, 'terminated', action='update')
+
+        _create_default_offboarding_tasks(case.id)
+
+        db.session.commit()
+        flash(f'Offboarding initiated for {user.name}.', 'success')
+        return redirect(url_for('admin.offboarding_detail', case_id=case.id))
+
+    return render_template('admin/initiate_offboarding.html', user=user, existing_case=existing_case)
+
+
+@admin_bp.route('/offboarding/<int:case_id>')
+@login_required
+@admin_required
+def offboarding_detail(case_id):
+    case = OffboardingCase.query.get_or_404(case_id)
+    tasks = case.tasks.all()
+    profile = EmployeeProfile.query.filter_by(user_id=case.user_id).first()
+    return render_template('admin/offboarding_detail.html', case=case, tasks=tasks, profile=profile)
+
+
+@admin_bp.route('/offboarding/task/<int:task_id>/toggle', methods=['POST'])
+@login_required
+@admin_required
+def toggle_offboarding_task(task_id):
+    task = OffboardingTask.query.get_or_404(task_id)
+    task.completed = not task.completed
+    task.completed_at = datetime.now(timezone.utc) if task.completed else None
+    db.session.commit()
+
+    case = task.case
+    new_case_status = 'complete' if case.progress_pct == 100 else 'in_progress'
+    if case.status != new_case_status:
+        case.status = new_case_status
+        db.session.commit()
+
+    return jsonify({
+        'completed': task.completed,
+        'progress': case.progress_pct,
+        'case_status': case.status,
+    })
+
+
+# ── Payroll-Ready Export (Phase 4 — admin-only, SENSITIVE) ────────────────────
+
+def _build_payroll_rows(start, end):
+    """Consolidate, per active employee: name, employee_number, department,
+    current base_salary (latest CompensationRecord), pay_frequency,
+    employment_type, and approved PTO days overlapping [start, end]."""
+    profiles = EmployeeProfile.query.filter_by(employment_status='active') \
+        .join(User, EmployeeProfile.user_id == User.id).order_by(User.name).all()
+
+    rows = []
+    for profile in profiles:
+        comp = CompensationRecord.query.filter_by(user_id=profile.user_id) \
+            .order_by(CompensationRecord.effective_date.desc()).first()
+        approved = PTORequest.query.filter(
+            PTORequest.user_id == profile.user_id,
+            PTORequest.status == 'approved',
+            PTORequest.start_date <= end,
+            PTORequest.end_date >= start,
+        ).all()
+        approved_pto_days = sum(r.days_requested for r in approved)
+
+        rows.append({
+            'name': profile.user.name,
+            'employee_number': profile.employee_number or '',
+            'department': profile.department or '',
+            'base_salary': comp.base_salary if comp else None,
+            'currency': comp.currency if comp else '',
+            'pay_frequency': (comp.pay_frequency or '') if comp else '',
+            'employment_type': profile.employment_type or '',
+            'approved_pto_days': approved_pto_days,
+        })
+    return rows
+
+
+def _parse_payroll_range():
+    """Shared date-range parsing for the payroll export page + CSV/XLSX
+    downloads. Defaults to the current calendar month to date."""
+    today = date.today()
+    start_str = request.args.get('start_date', '')
+    end_str = request.args.get('end_date', '')
+    start = datetime.strptime(start_str, '%Y-%m-%d').date() if start_str else today.replace(day=1)
+    end = datetime.strptime(end_str, '%Y-%m-%d').date() if end_str else today
+    return start, end
+
+
+@admin_bp.route('/payroll-export')
+@login_required
+@admin_required
+def payroll_export():
+    start, end = _parse_payroll_range()
+    rows = _build_payroll_rows(start, end)
+
+    xlsx_available = True
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError:
+        xlsx_available = False
+
+    return render_template('admin/payroll_export.html', rows=rows, start=start, end=end,
+                           xlsx_available=xlsx_available)
+
+
+@admin_bp.route('/payroll-export/csv')
+@login_required
+@admin_required
+def payroll_export_csv():
+    import csv
+    import io
+    from flask import Response
+
+    start, end = _parse_payroll_range()
+    rows = _build_payroll_rows(start, end)
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['Employee Name', 'Employee Number', 'Department', 'Base Salary',
+                      'Currency', 'Pay Frequency', 'Employment Type',
+                      f'Approved PTO Days ({start.isoformat()} to {end.isoformat()})'])
+    for r in rows:
+        writer.writerow([r['name'], r['employee_number'], r['department'],
+                          r['base_salary'] if r['base_salary'] is not None else '',
+                          r['currency'], r['pay_frequency'], r['employment_type'],
+                          r['approved_pto_days']])
+
+    log_change(current_user, 'PayrollExport', None, 'export', None,
+               f'{len(rows)} employee(s), range {start} to {end} (csv)', action='create')
+    db.session.commit()
+
+    return Response(buf.getvalue(), mimetype='text/csv',
+                     headers={'Content-Disposition': f'attachment; filename=payroll_export_{start}_{end}.csv'})
+
+
+@admin_bp.route('/payroll-export/xlsx')
+@login_required
+@admin_required
+def payroll_export_xlsx():
+    import io
+    from flask import Response
+    try:
+        from openpyxl import Workbook
+    except ImportError:
+        flash('XLSX export is unavailable on this server (openpyxl not installed). Use CSV instead.', 'error')
+        return redirect(url_for('admin.payroll_export'))
+
+    start, end = _parse_payroll_range()
+    rows = _build_payroll_rows(start, end)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Payroll Export'
+    headers = ['Employee Name', 'Employee Number', 'Department', 'Base Salary',
+               'Currency', 'Pay Frequency', 'Employment Type',
+               f'Approved PTO Days ({start.isoformat()} to {end.isoformat()})']
+    ws.append(headers)
+    for r in rows:
+        ws.append([r['name'], r['employee_number'], r['department'],
+                   float(r['base_salary']) if r['base_salary'] is not None else None,
+                   r['currency'], r['pay_frequency'], r['employment_type'],
+                   r['approved_pto_days']])
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    log_change(current_user, 'PayrollExport', None, 'export', None,
+               f'{len(rows)} employee(s), range {start} to {end} (xlsx)', action='create')
+    db.session.commit()
+
+    return Response(buf.getvalue(),
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                     headers={'Content-Disposition': f'attachment; filename=payroll_export_{start}_{end}.xlsx'})
+
+
+# ── Time Tracking (Phase 4 — admin visibility) ────────────────────────────────
+
+@admin_bp.route('/time-entries')
+@login_required
+@admin_required
+def time_entries_admin():
+    """Admin-wide read view of all logged time (any status)."""
+    entries = TimeEntry.query.order_by(TimeEntry.work_date.desc()).limit(300).all()
+    return render_template('admin/time_entries.html', entries=entries)

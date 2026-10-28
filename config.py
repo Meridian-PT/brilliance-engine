@@ -19,6 +19,11 @@ class Config:
     WTF_CSRF_ENABLED = True
     MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB
 
+    # Phase 4 — Time Tracking ingestion API. Static token checked via the
+    # X-API-Token header on POST /api/v1/time-entries. Override in production
+    # via the TIMETRACK_API_TOKEN environment variable.
+    TIMETRACK_API_TOKEN = os.environ.get('TIMETRACK_API_TOKEN', 'brilliance-timetrack-dev-token')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

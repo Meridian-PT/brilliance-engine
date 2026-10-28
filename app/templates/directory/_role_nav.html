@@ -5,17 +5,22 @@
 <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.assessments') }}"><i class="bi bi-clipboard-check"></i> Assessments</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'employee.time_tracking' %} active{% endif %}" href="{{ url_for('employee.time_tracking') }}"><i class="bi bi-stopwatch"></i> Time Tracking</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
 {% elif current_user.role == 'manager' %}
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.employees') }}"><i class="bi bi-people"></i> My Team</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'manager.team_calendar' %} active{% endif %}" href="{{ url_for('manager.team_calendar') }}"><i class="bi bi-calendar3"></i> Team Calendar</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'manager.team_offboarding' %} active{% endif %}" href="{{ url_for('manager.team_offboarding') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'manager.time_approvals' %} active{% endif %}" href="{{ url_for('manager.time_approvals') }}"><i class="bi bi-stopwatch"></i> Time Approvals</a></li>
 {% elif current_user.role == 'admin' %}
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.employees' %} active{% endif %}" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.offboarding_cases' %} active{% endif %}" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.payroll_export' %} active{% endif %}" href="{{ url_for('admin.payroll_export') }}"><i class="bi bi-cash-stack"></i> Payroll Export</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.salary_bands' %} active{% endif %}" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.audit_log' %} active{% endif %}" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
@@ -24,6 +29,7 @@
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.benefits' %} active{% endif %}" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.enrollment_windows' %} active{% endif %}" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.accrual_policies' %} active{% endif %}" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.time_entries_admin' %} active{% endif %}" href="{{ url_for('admin.time_entries_admin') }}"><i class="bi bi-stopwatch"></i> Time Entries</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.analytics' %} active{% endif %}" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.announcements' %} active{% endif %}" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
 {% endif %}

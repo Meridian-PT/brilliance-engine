@@ -1,0 +1,109 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Offboarding — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.payroll_export' %} active{% endif %}" href="{{ url_for('admin.payroll_export') }}"><i class="bi bi-cash-stack"></i> Payroll Export</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.salary_bands' %} active{% endif %}" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.audit_log' %} active{% endif %}" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.benefits' %} active{% endif %}" href="{{ url_for('admin.benefits') }}"><i class="bi bi-heart-pulse"></i> Benefits</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.enrollment_windows' %} active{% endif %}" href="{{ url_for('admin.enrollment_windows') }}"><i class="bi bi-calendar-range"></i> Enrollment Windows</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.accrual_policies' %} active{% endif %}" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.time_entries_admin' %} active{% endif %}" href="{{ url_for('admin.time_entries_admin') }}"><i class="bi bi-stopwatch"></i> Time Entries</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.analytics' %} active{% endif %}" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.announcements' %} active{% endif %}" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Offboarding</h1>
+        <p class="lead">{{ cases|length }} case{{ 's' if cases|length != 1 }} on file</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-box-arrow-right"></i> Initiate Offboarding</h3>
+        </div>
+        <div class="content-card-body">
+            {% if active_employees %}
+            <form method="GET" action="" onsubmit="event.preventDefault(); const sel = document.getElementById('initiate-select'); if (sel.value) { window.location = sel.value; }" class="row g-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label">Select an active employee to begin offboarding</label>
+                    <select id="initiate-select" class="form-select">
+                        <option value="">— Choose employee —</option>
+                        {% for profile in active_employees %}
+                        <option value="{{ url_for('admin.initiate_offboarding', user_id=profile.user_id) }}">{{ profile.user.name }} — {{ profile.title or profile.department or profile.user.email }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-be"><i class="bi bi-arrow-right-circle"></i> Start Offboarding</button>
+                </div>
+            </form>
+            {% else %}
+            <p style="color: var(--text-muted); margin: 0;">No active employees available to offboard.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if cases %}
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-be mb-0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Last Day</th>
+                            <th>Initiated By</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for case in cases %}
+                        <tr>
+                            <td><strong>{{ case.user.name }}</strong></td>
+                            <td>{{ case.last_day.strftime('%b %d, %Y') if case.last_day else '—' }}</td>
+                            <td>{{ case.initiator.name if case.initiator else '—' }}</td>
+                            <td>{{ case.progress_pct }}%</td>
+                            <td>
+                                {% if case.status == 'complete' %}
+                                <span class="badge" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Complete</span>
+                                {% else %}
+                                <span class="badge" style="background: rgba(243,156,18,0.15); color: #f1c40f;">In Progress</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin.offboarding_detail', case_id=case.id) }}" class="btn btn-sm btn-be-outline"><i class="bi bi-box-arrow-up-right"></i></a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="content-card">
+        <div class="content-card-body text-center py-4" style="color: var(--text-muted);">
+            <i class="bi bi-box-arrow-right" style="font-size: 2rem;"></i>
+            <p class="mt-2 mb-0">No offboarding cases yet.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

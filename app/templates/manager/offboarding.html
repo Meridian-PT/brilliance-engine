@@ -1,0 +1,70 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Offboarding — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.employees') }}"><i class="bi bi-people"></i> My Team</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'manager.team_calendar' %} active{% endif %}" href="{{ url_for('manager.team_calendar') }}"><i class="bi bi-calendar3"></i> Team Calendar</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('manager.team_offboarding') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'manager.time_approvals' %} active{% endif %}" href="{{ url_for('manager.time_approvals') }}"><i class="bi bi-stopwatch"></i> Time Approvals</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Offboarding</h1>
+        <p class="lead">{{ cases|length }} case{{ 's' if cases|length != 1 }} for your team</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    {% if cases %}
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-be mb-0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Last Day</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for case in cases %}
+                        <tr>
+                            <td><strong>{{ case.user.name }}</strong></td>
+                            <td>{{ case.last_day.strftime('%b %d, %Y') if case.last_day else '—' }}</td>
+                            <td>{{ case.progress_pct }}%</td>
+                            <td>
+                                {% if case.status == 'complete' %}
+                                <span class="badge" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Complete</span>
+                                {% else %}
+                                <span class="badge" style="background: rgba(243,156,18,0.15); color: #f1c40f;">In Progress</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('manager.offboarding_detail', case_id=case.id) }}" class="btn btn-sm btn-be-outline"><i class="bi bi-box-arrow-up-right"></i></a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="content-card">
+        <div class="content-card-body text-center py-4" style="color: var(--text-muted);">
+            <i class="bi bi-box-arrow-right" style="font-size: 2rem;"></i>
+            <p class="mt-2 mb-0">No offboarding cases for your team.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

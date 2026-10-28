@@ -5,7 +5,8 @@ from app import db
 from app.models import (Candidate, Position, Interview, Scorecard, User,
                          CandidateNote, PIPELINE_STAGES, NewHire,
                          EmployeeProfile, PTORequest, TrainingCompletion,
-                         PerformanceReview, ReviewCycle, get_active_announcements_for)
+                         PerformanceReview, ReviewCycle, get_active_announcements_for,
+                         OffboardingCase, TimeEntry)
 
 manager_bp = Blueprint('manager', __name__, template_folder='../templates/manager')
 
@@ -436,3 +437,73 @@ def team_calendar():
 
     return render_template('manager/team_calendar.html',
                            week_groups=week_groups, report_count=len(report_profiles))
+
+
+# ── Offboarding (Phase 4 — read-only view for Manager/HR) ───────────────────
+
+@manager_bp.route('/offboarding')
+@login_required
+@manager_required
+def team_offboarding():
+    if current_user.role == 'admin':
+        cases = OffboardingCase.query.order_by(OffboardingCase.created_at.desc()).all()
+    else:
+        report_ids = [p.user_id for p in EmployeeProfile.query.filter_by(manager_id=current_user.id).all()]
+        cases = OffboardingCase.query.filter(OffboardingCase.user_id.in_(report_ids)) \
+            .order_by(OffboardingCase.created_at.desc()).all() if report_ids else []
+    return render_template('manager/offboarding.html', cases=cases)
+
+
+@manager_bp.route('/offboarding/<int:case_id>')
+@login_required
+@manager_required
+def offboarding_detail(case_id):
+    case = OffboardingCase.query.get_or_404(case_id)
+    profile = EmployeeProfile.query.filter_by(user_id=case.user_id).first()
+    if current_user.role != 'admin' and (not profile or profile.manager_id != current_user.id):
+        flash('Access denied.', 'error')
+        return redirect(url_for('manager.team_offboarding'))
+    tasks = case.tasks.all()
+    return render_template('manager/offboarding_detail.html', case=case, tasks=tasks, profile=profile)
+
+
+# ── Time Approvals (Phase 4 — Lifecycle & Integrations) ──────────────────────
+
+@manager_bp.route('/time-approvals')
+@login_required
+@manager_required
+def time_approvals():
+    if current_user.role == 'admin':
+        report_ids = [u.id for u in User.query.all()]
+    else:
+        report_ids = [p.user_id for p in EmployeeProfile.query.filter_by(manager_id=current_user.id).all()]
+
+    pending = []
+    history = []
+    if report_ids:
+        pending = TimeEntry.query.filter(
+            TimeEntry.user_id.in_(report_ids), TimeEntry.status == 'submitted'
+        ).order_by(TimeEntry.work_date.desc()).all()
+        history = TimeEntry.query.filter(
+            TimeEntry.user_id.in_(report_ids), TimeEntry.status != 'submitted'
+        ).order_by(TimeEntry.work_date.desc()).limit(30).all()
+
+    return render_template('manager/time_approvals.html', pending=pending, history=history)
+
+
+@manager_bp.route('/time-entries/<int:entry_id>/review', methods=['POST'])
+@login_required
+@manager_required
+def review_time_entry(entry_id):
+    entry = TimeEntry.query.get_or_404(entry_id)
+    profile = EmployeeProfile.query.filter_by(user_id=entry.user_id).first()
+    if current_user.role != 'admin' and (not profile or profile.manager_id != current_user.id):
+        flash('Access denied.', 'error')
+        return redirect(url_for('manager.time_approvals'))
+
+    action = request.form.get('action', 'approve')
+    entry.status = 'approved' if action == 'approve' else 'rejected'
+    entry.approved_by = current_user.id
+    db.session.commit()
+    flash(f'Time entry {entry.status}.', 'success')
+    return redirect(url_for('manager.time_approvals'))

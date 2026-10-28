@@ -15,6 +15,8 @@
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.accrual_policies' %} active{% endif %}" href="{{ url_for('admin.accrual_policies') }}"><i class="bi bi-arrow-repeat"></i> Accrual Policies</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.analytics' %} active{% endif %}" href="{{ url_for('admin.analytics') }}"><i class="bi bi-bar-chart-line"></i> Analytics</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.announcements' %} active{% endif %}" href="{{ url_for('admin.announcements') }}"><i class="bi bi-megaphone"></i> Announcements</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.offboarding_cases' %} active{% endif %}" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.payroll_export' %} active{% endif %}" href="{{ url_for('admin.payroll_export') }}"><i class="bi bi-cash-stack"></i> Payroll Export</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
 {% endblock %}

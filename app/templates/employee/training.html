@@ -9,6 +9,7 @@
 <li class="nav-item"><a class="nav-link active" href="{{ url_for('employee.training') }}"><i class="bi bi-mortarboard"></i> Training</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.time_off') }}"><i class="bi bi-calendar2-heart"></i> Time Off</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('employee.performance') }}"><i class="bi bi-graph-up"></i> Performance</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'employee.time_tracking' %} active{% endif %}" href="{{ url_for('employee.time_tracking') }}"><i class="bi bi-stopwatch"></i> Time Tracking</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
 {% endblock %}

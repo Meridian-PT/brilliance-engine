@@ -1,0 +1,121 @@
+{% extends "dashboard_base.html" %}
+{% block title %}{{ case.user.name }} — Offboarding — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4">
+    <a href="{{ url_for('admin.offboarding_cases') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">
+        <i class="bi bi-arrow-left"></i> Back to Offboarding
+    </a>
+
+    <div class="content-card mt-3">
+        <div class="content-card-body">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <h3 style="margin: 0;">{{ case.user.name }}</h3>
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">
+                        {{ case.user.email }}
+                        {% if profile and profile.department %} | {{ profile.department }}{% endif %}
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                        Last day: <strong>{{ case.last_day.strftime('%b %d, %Y') if case.last_day else '—' }}</strong>
+                        · Initiated by {{ case.initiator.name if case.initiator else '—' }}
+                        on {{ case.created_at.strftime('%b %d, %Y') if case.created_at else '—' }}
+                    </div>
+                    {% if case.reason %}
+                    <div style="color: var(--text-dim); font-size: 0.85rem; margin-top: 0.5rem; border-left: 2px solid var(--border); padding-left: 0.75rem;">{{ case.reason }}</div>
+                    {% endif %}
+                </div>
+                <div class="text-center">
+                    <div class="stat-value" id="progress-value">{{ case.progress_pct }}%</div>
+                    <div class="stat-label">Complete</div>
+                    <span class="badge mt-1" id="case-status-badge" style="background: {% if case.status == 'complete' %}rgba(39,174,96,0.15); color: #2ecc71;{% else %}rgba(243,156,18,0.15); color: #f1c40f;{% endif %}">
+                        {{ 'Complete' if case.status == 'complete' else 'In Progress' }}
+                    </span>
+                </div>
+            </div>
+            <div class="progress mt-3" style="height: 8px;">
+                <div class="progress-bar" role="progressbar" style="width: {{ case.progress_pct }}%; background: #f1420b;" id="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-check2-square"></i> Offboarding Checklist</h3>
+        </div>
+        <div class="content-card-body">
+            {% for task in tasks %}
+            <div class="task-item" id="task-{{ task.id }}">
+                <div class="task-checkbox {% if task.completed %}done{% endif %}"
+                     onclick="toggleOffboardingTask({{ task.id }})"
+                     id="check-{{ task.id }}">
+                    {% if task.completed %}<i class="bi bi-check"></i>{% endif %}
+                </div>
+                <div>
+                    <div class="task-title {% if task.completed %}done{% endif %}" id="title-{{ task.id }}">
+                        {{ task.title }}
+                    </div>
+                    {% if task.description %}
+                    <div class="task-meta">{{ task.description }}</div>
+                    {% endif %}
+                    <div class="task-meta">
+                        {% if task.category %}<span style="text-transform: capitalize;">{{ task.category|replace('_', ' ') }}</span> · {% endif %}
+                        {% if task.assigned_to %}<i class="bi bi-person"></i> {{ task.assigned_to|capitalize }}{% endif %}
+                        {% if task.due_offset_days %} · {{ task.due_offset_days }} day{{ 's' if task.due_offset_days not in (1,-1) }} {{ 'after' if task.due_offset_days > 0 else 'before' }} last day{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">No checklist items on file.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleOffboardingTask(taskId) {
+    fetch(`/admin/offboarding/task/${taskId}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const check = document.getElementById(`check-${taskId}`);
+        const title = document.getElementById(`title-${taskId}`);
+        if (data.completed) {
+            check.classList.add('done');
+            check.innerHTML = '<i class="bi bi-check"></i>';
+            title.classList.add('done');
+        } else {
+            check.classList.remove('done');
+            check.innerHTML = '';
+            title.classList.remove('done');
+        }
+        document.getElementById('progress-value').textContent = data.progress + '%';
+        document.getElementById('progress-bar').style.width = data.progress + '%';
+        const badge = document.getElementById('case-status-badge');
+        if (data.case_status === 'complete') {
+            badge.textContent = 'Complete';
+            badge.style.background = 'rgba(39,174,96,0.15)';
+            badge.style.color = '#2ecc71';
+        } else {
+            badge.textContent = 'In Progress';
+            badge.style.background = 'rgba(243,156,18,0.15)';
+            badge.style.color = '#f1c40f';
+        }
+    });
+}
+</script>
+{% endblock %}

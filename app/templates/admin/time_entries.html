@@ -1,0 +1,66 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Time Entries — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.payroll_export') }}"><i class="bi bi-cash-stack"></i> Payroll Export</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.time_entries_admin') }}"><i class="bi bi-stopwatch"></i> Time Entries</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Time Entries</h1>
+        <p class="lead">{{ entries|length }} most recent entr{{ 'y' if entries|length == 1 else 'ies' }} across all employees</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            {% if entries %}
+            <div class="table-responsive">
+                <table class="table table-be mb-0">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>Hours</th>
+                            <th>Project / Task</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                            <th>Approved By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in entries %}
+                        <tr>
+                            <td>{{ e.user.name }}</td>
+                            <td>{{ e.work_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ e.hours }}</td>
+                            <td>{{ e.project_or_task or '—' }}</td>
+                            <td>
+                                {% if e.status == 'approved' %}
+                                <span class="badge" style="background: rgba(39,174,96,0.15); color: #2ecc71;">Approved</span>
+                                {% elif e.status == 'rejected' %}
+                                <span class="badge" style="background: rgba(231,76,60,0.15); color: #e74c3c;">Rejected</span>
+                                {% else %}
+                                <span class="badge" style="background: rgba(243,156,18,0.15); color: #f1c40f;">Submitted</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-transform: capitalize;">{{ e.source }}</td>
+                            <td>{{ e.approver.name if e.approver else '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4" style="color: var(--text-muted);">No time entries on file yet.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

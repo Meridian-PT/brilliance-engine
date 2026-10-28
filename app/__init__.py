@@ -31,6 +31,7 @@ def create_app(config_name='default'):
     from app.employee.routes import employee_bp
     from app.files.routes import files_bp
     from app.directory.routes import directory_bp
+    from app.api.routes import api_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(candidate_bp, url_prefix='/candidate')
@@ -40,6 +41,12 @@ def create_app(config_name='default'):
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(files_bp)
     app.register_blueprint(directory_bp, url_prefix='/directory')
+    app.register_blueprint(api_bp, url_prefix='/api/v1')
+
+    # The ingestion API (app/api/routes.py) is authenticated via a static
+    # X-API-Token header, not a session cookie, so it's exempt from
+    # Flask-WTF's CSRF protection (which otherwise applies to every POST).
+    csrf.exempt(api_bp)
 
     from app.models import User
 

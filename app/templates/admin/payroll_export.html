@@ -1,0 +1,85 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Payroll Export — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.offboarding_cases') }}"><i class="bi bi-box-arrow-right"></i> Offboarding</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.payroll_export') }}"><i class="bi bi-cash-stack"></i> Payroll Export</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Payroll-Ready Export</h1>
+        <p class="lead">Admin only — consolidated pay data for any payroll provider</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start.isoformat() }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End Date (PTO range)</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end.isoformat() }}">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-be"><i class="bi bi-funnel"></i> Update Preview</button>
+                </div>
+                <div class="col-md-3 d-flex gap-2 justify-content-end">
+                    <a href="{{ url_for('admin.payroll_export_csv', start_date=start.isoformat(), end_date=end.isoformat()) }}" class="btn btn-be-gold"><i class="bi bi-download"></i> CSV</a>
+                    {% if xlsx_available %}
+                    <a href="{{ url_for('admin.payroll_export_xlsx', start_date=start.isoformat(), end_date=end.isoformat()) }}" class="btn btn-be-outline"><i class="bi bi-file-earmark-excel"></i> XLSX</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-header">
+            <h3><i class="bi bi-table"></i> Preview — {{ rows|length }} active employee{{ 's' if rows|length != 1 }}</h3>
+        </div>
+        <div class="content-card-body p-0">
+            {% if rows %}
+            <div class="table-responsive">
+                <table class="table table-be mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Employee #</th>
+                            <th>Department</th>
+                            <th>Base Salary</th>
+                            <th>Pay Frequency</th>
+                            <th>Employment Type</th>
+                            <th>Approved PTO Days</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr>
+                            <td><strong>{{ r.name }}</strong></td>
+                            <td>{{ r.employee_number or '—' }}</td>
+                            <td>{{ r.department or '—' }}</td>
+                            <td>{% if r.base_salary is not none %}{{ "{:,.2f}".format(r.base_salary) }} {{ r.currency }}{% else %}—{% endif %}</td>
+                            <td style="text-transform: capitalize;">{{ (r.pay_frequency or '—')|replace('_', ' ') }}</td>
+                            <td style="text-transform: capitalize;">{{ (r.employment_type or '—')|replace('_', ' ') }}</td>
+                            <td>{{ r.approved_pto_days }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4" style="color: var(--text-muted);">No active employees found.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

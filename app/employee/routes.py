@@ -3,13 +3,14 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from datetime import datetime, date, timezone
 from app import db
+from decimal import Decimal, InvalidOperation
 from app.models import (User, Document, FileAttachment, EmployeeProfile, Policy,
                          PolicyAcknowledgment, ContentAccessLog, AssessmentTemplate,
                          AssessmentResult, TrainingCourse, TrainingModule,
                          TrainingCompletion, PTOBalance, PTORequest, ReviewCycle,
                          PerformanceReview, CompensationRecord, BonusRecord,
                          BenefitPlan, BenefitEnrollment, get_open_enrollment_window,
-                         get_active_announcements_for)
+                         get_active_announcements_for, TimeEntry)
 from app.audit import log_change
 
 employee_bp = Blueprint('employee', __name__, template_folder='../templates/employee')
@@ -573,3 +574,91 @@ def edit_profile():
         db.session.commit()
         flash('Profile updated.', 'success')
     return redirect(url_for('employee.my_profile'))
+
+
+# ── Time Tracking (Phase 4 — Lifecycle & Integrations) ───────────────────────
+
+@employee_bp.route('/time-tracking')
+@login_required
+@employee_required
+def time_tracking():
+    entries = TimeEntry.query.filter_by(user_id=current_user.id) \
+        .order_by(TimeEntry.work_date.desc()).limit(50).all()
+    return render_template('employee/time_tracking.html', entries=entries)
+
+
+@employee_bp.route('/time-tracking/log', methods=['POST'])
+@login_required
+@employee_required
+def log_time_entry():
+    work_date_str = request.form.get('work_date', '')
+    hours_str = request.form.get('hours', '').strip()
+
+    if not work_date_str or not hours_str:
+        flash('Work date and hours are required.', 'error')
+        return redirect(url_for('employee.time_tracking'))
+
+    try:
+        work_date = datetime.strptime(work_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Invalid work date.', 'error')
+        return redirect(url_for('employee.time_tracking'))
+
+    try:
+        hours = Decimal(hours_str)
+        if hours <= 0:
+            raise InvalidOperation('hours must be positive')
+    except (InvalidOperation, ValueError):
+        flash('Hours must be a positive number.', 'error')
+        return redirect(url_for('employee.time_tracking'))
+
+    entry = TimeEntry(
+        user_id=current_user.id,
+        work_date=work_date,
+        hours=hours,
+        project_or_task=request.form.get('project_or_task', '').strip() or None,
+        description=request.form.get('description', '').strip() or None,
+        status='submitted',
+        source='manual',
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash(f'Logged {hours}h for {work_date.strftime("%b %d, %Y")}.', 'success')
+    return redirect(url_for('employee.time_tracking'))
+
+
+@employee_bp.route('/time-tracking/<int:entry_id>/edit', methods=['POST'])
+@login_required
+@employee_required
+def edit_time_entry(entry_id):
+    entry = TimeEntry.query.get_or_404(entry_id)
+    if entry.user_id != current_user.id:
+        flash('Access denied.', 'error')
+        return redirect(url_for('employee.time_tracking'))
+    if entry.status != 'submitted':
+        flash('Only entries still pending approval can be edited.', 'error')
+        return redirect(url_for('employee.time_tracking'))
+
+    work_date_str = request.form.get('work_date', '')
+    hours_str = request.form.get('hours', '').strip()
+    if work_date_str:
+        try:
+            entry.work_date = datetime.strptime(work_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('Invalid work date.', 'error')
+            return redirect(url_for('employee.time_tracking'))
+    if hours_str:
+        try:
+            hours = Decimal(hours_str)
+            if hours <= 0:
+                raise InvalidOperation('hours must be positive')
+            entry.hours = hours
+        except (InvalidOperation, ValueError):
+            flash('Hours must be a positive number.', 'error')
+            return redirect(url_for('employee.time_tracking'))
+
+    entry.project_or_task = request.form.get('project_or_task', '').strip() or None
+    entry.description = request.form.get('description', '').strip() or None
+    db.session.commit()
+    flash('Time entry updated.', 'success')
+    return redirect(url_for('employee.time_tracking'))
