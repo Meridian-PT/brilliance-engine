@@ -1,0 +1,85 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Audit Log — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Audit Log</h1>
+        <p class="lead">{{ entries|length }} most recent entr{{ 'y' if entries|length == 1 else 'ies' }} (sensitive changes — compensation, employment status, roles)</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Entity Type</label>
+                    <select name="entity_type" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        {% for t in entity_types %}
+                        <option value="{{ t }}" {% if t == current_type %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-be"><i class="bi bi-funnel"></i> Filter</button>
+                    {% if current_type %}
+                    <a href="{{ url_for('admin.audit_log') }}" class="btn btn-be-outline">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            {% if entries %}
+            <div class="table-responsive">
+                <table class="table table-be mb-0">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Actor</th>
+                            <th>Action</th>
+                            <th>Entity</th>
+                            <th>Field</th>
+                            <th>Old Value</th>
+                            <th>New Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in entries %}
+                        <tr>
+                            <td style="white-space: nowrap;">{{ e.created_at.strftime('%b %d, %Y %H:%M') if e.created_at else '—' }}</td>
+                            <td>{{ e.actor.name if e.actor else 'System' }}</td>
+                            <td style="text-transform: capitalize;">{{ e.action }}</td>
+                            <td>{{ e.entity_type }}{% if e.entity_id %} #{{ e.entity_id }}{% endif %}</td>
+                            <td>{{ e.field_name or '—' }}</td>
+                            <td style="color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ e.old_value or '—' }}</td>
+                            <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ e.new_value or '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4" style="color: var(--text-muted);">No audit entries yet.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

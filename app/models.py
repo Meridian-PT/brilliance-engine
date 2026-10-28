@@ -312,6 +312,19 @@ class EmployeeProfile(db.Model):
     emergency_contact_phone = db.Column(db.String(30))
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # ── Phase 2: System-of-Record fields ──
+    address_line1 = db.Column(db.String(200))
+    address_line2 = db.Column(db.String(200))
+    city = db.Column(db.String(100))
+    province_state = db.Column(db.String(100))
+    postal_code = db.Column(db.String(20))
+    country = db.Column(db.String(100))
+    date_of_birth = db.Column(db.Date)
+    employment_status = db.Column(db.String(20), default='active')  # active, on_leave, terminated, suspended
+    employment_type = db.Column(db.String(20))  # full_time, part_time, contract, intern
+    termination_date = db.Column(db.Date)
+    termination_reason = db.Column(db.Text)
+
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('employee_profile', uselist=False))
     manager = db.relationship('User', foreign_keys=[manager_id])
 
@@ -555,3 +568,86 @@ class PerformanceReview(db.Model):
 
     employee = db.relationship('User', foreign_keys=[employee_id])
     reviewer = db.relationship('User', foreign_keys=[reviewer_id])
+
+
+# ── Compensation (Phase 2 — SENSITIVE, access-gated) ──────────────────────────
+
+class CompensationRecord(db.Model):
+    """Base salary history. Admin-only write; employee read-only on own current record."""
+    __tablename__ = 'compensation_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    base_salary = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(10), default='CAD')
+    pay_frequency = db.Column(db.String(20))  # annual, monthly, bi_weekly, weekly, hourly
+    effective_date = db.Column(db.Date, nullable=False)
+    change_reason = db.Column(db.String(200))
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def __repr__(self):
+        return f'<CompensationRecord user={self.user_id} {self.base_salary} {self.currency} eff={self.effective_date}>'
+
+
+class BonusRecord(db.Model):
+    """Bonus/award history. Admin-only write; employee read-only on own records."""
+    __tablename__ = 'bonus_records'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(10), default='CAD')
+    bonus_type = db.Column(db.String(50))  # performance, signing, retention, spot, referral, other
+    award_date = db.Column(db.Date, nullable=False)
+    note = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def __repr__(self):
+        return f'<BonusRecord user={self.user_id} {self.amount} {self.currency} type={self.bonus_type}>'
+
+
+class SalaryBand(db.Model):
+    """Admin-only reference table for compensation benchmarking by level/department."""
+    __tablename__ = 'salary_bands'
+
+    id = db.Column(db.Integer, primary_key=True)
+    level = db.Column(db.String(50), nullable=False)
+    department = db.Column(db.String(100))
+    currency = db.Column(db.String(10), default='CAD')
+    salary_min = db.Column(db.Numeric(12, 2))
+    salary_mid = db.Column(db.Numeric(12, 2))
+    salary_max = db.Column(db.Numeric(12, 2))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def __repr__(self):
+        return f'<SalaryBand {self.level} / {self.department}>'
+
+
+# ── Audit Trail (Phase 2) ─────────────────────────────────────────────────────
+
+class AuditLog(db.Model):
+    """Immutable log of sensitive changes (compensation, employment status, roles)."""
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    action = db.Column(db.String(50), nullable=False)  # create, update, delete
+    entity_type = db.Column(db.String(50), nullable=False)  # CompensationRecord, BonusRecord, EmployeeProfile, User
+    entity_id = db.Column(db.Integer)
+    field_name = db.Column(db.String(100))
+    old_value = db.Column(db.Text)
+    new_value = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    actor = db.relationship('User', foreign_keys=[actor_id])
+
+    def __repr__(self):
+        return f'<AuditLog {self.action} {self.entity_type}#{self.entity_id}.{self.field_name}>'

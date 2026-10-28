@@ -625,6 +625,21 @@ def _seed_employee_data(jared, mireille, admin, positions):
 
 
 with app.app_context():
+    # ── Migration strategy (Phase 2, Alembic adopted 2026-10-28) ──
+    # db.create_all() only CREATEs tables that don't exist yet; it never ALTERs
+    # an existing table. That makes it safe to run on every boot:
+    #   - Fresh deploy (no DB yet): create_all() builds every table — including
+    #     brand-new Phase 2 tables (compensation_records, bonus_records,
+    #     salary_bands, audit_logs) — with the full current schema in one shot.
+    #     No `flask db upgrade` is required for a fresh DB.
+    #   - Existing deployed DB (e.g. a Render Postgres that predates Phase 2):
+    #     create_all() will add the new tables above (they don't exist yet) but
+    #     CANNOT add new columns to tables that already exist, like the Phase 2
+    #     columns added to employee_profiles (address, employment_status, etc).
+    #     Those column additions live in migrations/versions/ and must be
+    #     applied once via `flask db upgrade` against that database.
+    # The dev SQLite DB (instance/brilliance.db) has already had `flask db
+    # upgrade` run against it as part of this change, and is fully migrated.
     db.create_all()
     seed_database()
 

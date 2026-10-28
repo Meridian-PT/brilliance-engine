@@ -74,6 +74,14 @@
                             <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Role</div>
                             <div style="font-weight: 500; text-transform: capitalize;">{{ current_user.role }}</div>
                         </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Employment Status</div>
+                            <div style="font-weight: 500; text-transform: capitalize;">{{ (profile.employment_status or 'active')|replace('_', ' ') }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Employment Type</div>
+                            <div style="font-weight: 500; text-transform: capitalize;">{{ (profile.employment_type or '—')|replace('_', ' ') }}</div>
+                        </div>
                     </div>
                     {% else %}
                     <p style="color: var(--text-muted);">Profile not yet set up. Contact HR.</p>
@@ -81,10 +89,10 @@
                 </div>
             </div>
 
-            <!-- Emergency Contact + Edit -->
+            <!-- Emergency Contact + Address + Edit -->
             <div class="content-card">
                 <div class="content-card-header">
-                    <h3><i class="bi bi-telephone"></i> Contact Info</h3>
+                    <h3><i class="bi bi-telephone"></i> Contact &amp; Address</h3>
                 </div>
                 <div class="content-card-body">
                     <form method="POST" action="{{ url_for('employee.edit_profile') }}">
@@ -102,11 +110,83 @@
                                 <label class="form-label">Emergency Phone</label>
                                 <input type="text" name="emergency_contact_phone" class="form-control" value="{{ profile.emergency_contact_phone if profile and profile.emergency_contact_phone else '' }}" placeholder="(555) 123-4567">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Address Line 1</label>
+                                <input type="text" name="address_line1" class="form-control" value="{{ profile.address_line1 if profile and profile.address_line1 else '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Address Line 2</label>
+                                <input type="text" name="address_line2" class="form-control" value="{{ profile.address_line2 if profile and profile.address_line2 else '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">City</label>
+                                <input type="text" name="city" class="form-control" value="{{ profile.city if profile and profile.city else '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Province/State</label>
+                                <input type="text" name="province_state" class="form-control" value="{{ profile.province_state if profile and profile.province_state else '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Postal/ZIP Code</label>
+                                <input type="text" name="postal_code" class="form-control" value="{{ profile.postal_code if profile and profile.postal_code else '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Country</label>
+                                <input type="text" name="country" class="form-control" value="{{ profile.country if profile and profile.country else '' }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Date of Birth</label>
+                                <input type="date" name="date_of_birth" class="form-control" value="{{ profile.date_of_birth.isoformat() if profile and profile.date_of_birth else '' }}">
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-be mt-3">
-                            <i class="bi bi-save"></i> Update Contact Info
+                            <i class="bi bi-save"></i> Update My Info
                         </button>
                     </form>
+                </div>
+            </div>
+
+            <!-- Compensation (read-only, own current record only) -->
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h3><i class="bi bi-cash-coin"></i> My Compensation</h3>
+                </div>
+                <div class="content-card-body">
+                    {% if current_comp %}
+                    <div class="row g-3" style="font-size: 0.9rem;">
+                        <div class="col-md-4">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Base Salary</div>
+                            <div style="font-weight: 600; font-size: 1.1rem;">{{ "{:,.2f}".format(current_comp.base_salary) }} {{ current_comp.currency }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Pay Frequency</div>
+                            <div style="font-weight: 500; text-transform: capitalize;">{{ (current_comp.pay_frequency or '—')|replace('_', ' ') }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Effective Date</div>
+                            <div style="font-weight: 500;">{{ current_comp.effective_date.strftime('%B %d, %Y') if current_comp.effective_date else '—' }}</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); margin-bottom: 0;">No compensation record on file yet. Contact HR.</p>
+                    {% endif %}
+
+                    {% if bonus_history %}
+                    <hr style="border-color: var(--border);">
+                    <div style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Bonus History</div>
+                    <table class="table table-be mb-0">
+                        <thead><tr><th>Date</th><th>Type</th><th>Amount</th></tr></thead>
+                        <tbody>
+                        {% for b in bonus_history %}
+                            <tr>
+                                <td>{{ b.award_date.strftime('%b %d, %Y') if b.award_date else '—' }}</td>
+                                <td style="text-transform: capitalize;">{{ (b.bonus_type or 'bonus')|replace('_', ' ') }}</td>
+                                <td>{{ "{:,.2f}".format(b.amount) }} {{ b.currency }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
                 </div>
             </div>
         </div>

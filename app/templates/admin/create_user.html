@@ -4,6 +4,9 @@
 {% block nav_items %}
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
 <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.employees' %} active{% endif %}" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.salary_bands' %} active{% endif %}" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.audit_log' %} active{% endif %}" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
 <li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
 {% endblock %}

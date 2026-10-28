@@ -2,13 +2,16 @@ import uuid
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from datetime import datetime, date, timezone
+from decimal import Decimal, InvalidOperation
 from app import db
 from app.models import (User, Candidate, Position, Interview, Scorecard,
                          NewHire, OnboardingTask, Document, FileAttachment,
                          PIPELINE_STAGES, EmployeeProfile, Policy,
                          PolicyAcknowledgment, TrainingCourse, TrainingCompletion,
                          AssessmentTemplate, AssessmentResult, PTOBalance,
-                         PTORequest, ReviewCycle, PerformanceReview)
+                         PTORequest, ReviewCycle, PerformanceReview,
+                         CompensationRecord, BonusRecord, SalaryBand, AuditLog)
+from app.audit import log_change
 
 admin_bp = Blueprint('admin', __name__, template_folder='../templates/admin')
 
@@ -112,8 +115,11 @@ def edit_user(user_id):
         if existing:
             flash('Email already in use by another user.', 'error')
         else:
+            old_role = user.role
             user.email = email
             user.role = role
+            if old_role != role:
+                log_change(current_user, 'User', user.id, 'role', old_role, role, action='update')
             if password:
                 user.set_password(password)
             db.session.commit()
@@ -495,3 +501,246 @@ def employee_reports():
                            pending_pto=pending_pto,
                            approved_pto=approved_pto,
                            cycle_data=cycle_data)
+
+
+# ── Employee System-of-Record (Phase 2) ──────────────────────────────────────
+
+EMPLOYMENT_STATUSES = ['active', 'on_leave', 'terminated', 'suspended']
+EMPLOYMENT_TYPES = ['full_time', 'part_time', 'contract', 'intern']
+
+
+@admin_bp.route('/employees')
+@login_required
+@admin_required
+def employees():
+    """Admin-wide employee list (all EmployeeProfile records, any manager)."""
+    q = request.args.get('q', '').strip()
+    query = EmployeeProfile.query.join(User, EmployeeProfile.user_id == User.id)
+    if q:
+        like = f'%{q}%'
+        query = query.filter(db.or_(User.name.ilike(like), User.email.ilike(like),
+                                     EmployeeProfile.department.ilike(like)))
+    profiles = query.order_by(User.name).all()
+    return render_template('admin/employees.html', profiles=profiles, search=q)
+
+
+@admin_bp.route('/employees/<int:user_id>')
+@login_required
+@admin_required
+def employee_detail(user_id):
+    """Full employee system-of-record view: profile + compensation history."""
+    user = User.query.get_or_404(user_id)
+    profile = EmployeeProfile.query.filter_by(user_id=user_id).first()
+
+    comp_history = CompensationRecord.query.filter_by(user_id=user_id) \
+        .order_by(CompensationRecord.effective_date.desc()).all()
+    current_comp = comp_history[0] if comp_history else None
+    bonus_history = BonusRecord.query.filter_by(user_id=user_id) \
+        .order_by(BonusRecord.award_date.desc()).all()
+
+    managers = User.query.filter(User.role.in_(['manager', 'admin'])).order_by(User.name).all()
+
+    return render_template('admin/employee_detail.html',
+                           user=user, profile=profile,
+                           comp_history=comp_history, current_comp=current_comp,
+                           bonus_history=bonus_history,
+                           employment_statuses=EMPLOYMENT_STATUSES,
+                           employment_types=EMPLOYMENT_TYPES,
+                           managers=managers)
+
+
+@admin_bp.route('/employees/<int:user_id>/edit', methods=['POST'])
+@login_required
+@admin_required
+def edit_employee_profile(user_id):
+    """Admin edit of EmployeeProfile — includes employment_status/type/termination,
+    which are admin-only (not surfaced on the employee self-service form)."""
+    user = User.query.get_or_404(user_id)
+    profile = EmployeeProfile.query.filter_by(user_id=user_id).first()
+    if not profile:
+        profile = EmployeeProfile(user_id=user_id)
+        db.session.add(profile)
+        db.session.flush()  # assign profile.id before it's used in audit log entries below
+
+    profile.department = request.form.get('department', '').strip() or None
+    profile.title = request.form.get('title', '').strip() or None
+    profile.employee_number = request.form.get('employee_number', '').strip() or None
+    profile.phone = request.form.get('phone', '').strip() or None
+    manager_id = request.form.get('manager_id', '')
+    profile.manager_id = int(manager_id) if manager_id else None
+
+    start_date_str = request.form.get('start_date', '')
+    profile.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else profile.start_date
+
+    profile.address_line1 = request.form.get('address_line1', '').strip() or None
+    profile.address_line2 = request.form.get('address_line2', '').strip() or None
+    profile.city = request.form.get('city', '').strip() or None
+    profile.province_state = request.form.get('province_state', '').strip() or None
+    profile.postal_code = request.form.get('postal_code', '').strip() or None
+    profile.country = request.form.get('country', '').strip() or None
+
+    dob_str = request.form.get('date_of_birth', '')
+    profile.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date() if dob_str else None
+
+    # ── Sensitive employment fields — audited ──
+    old_status = profile.employment_status
+    new_status = request.form.get('employment_status', old_status or 'active')
+    old_type = profile.employment_type
+    new_type = request.form.get('employment_type', '').strip() or None
+
+    term_date_str = request.form.get('termination_date', '')
+    new_term_date = datetime.strptime(term_date_str, '%Y-%m-%d').date() if term_date_str else None
+    new_term_reason = request.form.get('termination_reason', '').strip() or None
+
+    if new_status != old_status:
+        log_change(current_user, 'EmployeeProfile', profile.id or user_id,
+                   'employment_status', old_status, new_status, action='update')
+        if new_status == 'terminated':
+            log_change(current_user, 'EmployeeProfile', profile.id or user_id,
+                       'termination', old_status,
+                       f'terminated effective {new_term_date or "unspecified"}: {new_term_reason or "no reason given"}',
+                       action='update')
+
+    if old_type != new_type:
+        log_change(current_user, 'EmployeeProfile', profile.id or user_id,
+                   'employment_type', old_type, new_type, action='update')
+
+    profile.employment_status = new_status
+    profile.employment_type = new_type
+    profile.termination_date = new_term_date
+    profile.termination_reason = new_term_reason
+
+    db.session.commit()
+    flash(f'{user.name}\'s employee record updated.', 'success')
+    return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+
+# ── Compensation (SENSITIVE — admin-only write) ──────────────────────────────
+
+@admin_bp.route('/employees/<int:user_id>/compensation/add', methods=['POST'])
+@login_required
+@admin_required
+def add_compensation(user_id):
+    user = User.query.get_or_404(user_id)
+
+    try:
+        base_salary = Decimal(request.form.get('base_salary', '0').strip() or '0')
+    except InvalidOperation:
+        flash('Invalid base salary amount.', 'error')
+        return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+    effective_date_str = request.form.get('effective_date', '')
+    if not effective_date_str or base_salary <= 0:
+        flash('Base salary and effective date are required.', 'error')
+        return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+    record = CompensationRecord(
+        user_id=user_id,
+        base_salary=base_salary,
+        currency=request.form.get('currency', 'CAD').strip() or 'CAD',
+        pay_frequency=request.form.get('pay_frequency', '').strip() or None,
+        effective_date=datetime.strptime(effective_date_str, '%Y-%m-%d').date(),
+        change_reason=request.form.get('change_reason', '').strip() or None,
+        created_by=current_user.id,
+    )
+    db.session.add(record)
+    db.session.flush()
+    log_change(current_user, 'CompensationRecord', record.id, 'base_salary',
+               None, f'{record.base_salary} {record.currency} eff. {record.effective_date}',
+               action='create')
+    db.session.commit()
+    flash(f'Compensation record added for {user.name}.', 'success')
+    return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+
+@admin_bp.route('/employees/<int:user_id>/bonus/add', methods=['POST'])
+@login_required
+@admin_required
+def add_bonus(user_id):
+    user = User.query.get_or_404(user_id)
+
+    try:
+        amount = Decimal(request.form.get('amount', '0').strip() or '0')
+    except InvalidOperation:
+        flash('Invalid bonus amount.', 'error')
+        return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+    award_date_str = request.form.get('award_date', '')
+    if not award_date_str or amount <= 0:
+        flash('Amount and award date are required.', 'error')
+        return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+    record = BonusRecord(
+        user_id=user_id,
+        amount=amount,
+        currency=request.form.get('currency', 'CAD').strip() or 'CAD',
+        bonus_type=request.form.get('bonus_type', '').strip() or None,
+        award_date=datetime.strptime(award_date_str, '%Y-%m-%d').date(),
+        note=request.form.get('note', '').strip() or None,
+        created_by=current_user.id,
+    )
+    db.session.add(record)
+    db.session.flush()
+    log_change(current_user, 'BonusRecord', record.id, 'amount',
+               None, f'{record.amount} {record.currency} ({record.bonus_type or "bonus"})',
+               action='create')
+    db.session.commit()
+    flash(f'Bonus record added for {user.name}.', 'success')
+    return redirect(url_for('admin.employee_detail', user_id=user_id))
+
+
+# ── Salary Bands (admin reference data) ──────────────────────────────────────
+
+@admin_bp.route('/salary-bands', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def salary_bands():
+    if request.method == 'POST':
+        try:
+            salary_min = Decimal(request.form.get('salary_min', '').strip() or '0') or None
+            salary_mid = Decimal(request.form.get('salary_mid', '').strip() or '0') or None
+            salary_max = Decimal(request.form.get('salary_max', '').strip() or '0') or None
+        except InvalidOperation:
+            flash('Salary band values must be numbers.', 'error')
+            return redirect(url_for('admin.salary_bands'))
+
+        level = request.form.get('level', '').strip()
+        if not level:
+            flash('Level is required.', 'error')
+            return redirect(url_for('admin.salary_bands'))
+
+        band = SalaryBand(
+            level=level,
+            department=request.form.get('department', '').strip() or None,
+            currency=request.form.get('currency', 'CAD').strip() or 'CAD',
+            salary_min=salary_min,
+            salary_mid=salary_mid,
+            salary_max=salary_max,
+        )
+        db.session.add(band)
+        db.session.commit()
+        flash(f'Salary band "{level}" created.', 'success')
+        return redirect(url_for('admin.salary_bands'))
+
+    bands = SalaryBand.query.order_by(SalaryBand.department, SalaryBand.level).all()
+    return render_template('admin/salary_bands.html', bands=bands)
+
+
+# ── Audit Trail ───────────────────────────────────────────────────────────────
+
+@admin_bp.route('/audit')
+@login_required
+@admin_required
+def audit_log():
+    entity_type = request.args.get('entity_type', '').strip()
+    query = AuditLog.query
+    if entity_type:
+        query = query.filter_by(entity_type=entity_type)
+    entries = query.order_by(AuditLog.created_at.desc()).limit(200).all()
+
+    entity_types = sorted(set(
+        r[0] for r in db.session.query(AuditLog.entity_type).distinct().all() if r[0]
+    ))
+
+    return render_template('admin/audit.html', entries=entries,
+                           entity_types=entity_types, current_type=entity_type)

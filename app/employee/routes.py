@@ -7,7 +7,7 @@ from app.models import (User, Document, FileAttachment, EmployeeProfile, Policy,
                          PolicyAcknowledgment, ContentAccessLog, AssessmentTemplate,
                          AssessmentResult, TrainingCourse, TrainingModule,
                          TrainingCompletion, PTOBalance, PTORequest, ReviewCycle,
-                         PerformanceReview)
+                         PerformanceReview, CompensationRecord, BonusRecord)
 
 employee_bp = Blueprint('employee', __name__, template_folder='../templates/employee')
 
@@ -448,7 +448,17 @@ def self_review(review_id):
 @employee_required
 def my_profile():
     profile = EmployeeProfile.query.filter_by(user_id=current_user.id).first()
-    return render_template('employee/my_profile.html', profile=profile)
+
+    # Read-only compensation: own CURRENT record only (most recent effective_date).
+    # No manager visibility in this phase, and never shown to anyone but the
+    # employee themselves or an admin.
+    current_comp = CompensationRecord.query.filter_by(user_id=current_user.id) \
+        .order_by(CompensationRecord.effective_date.desc()).first()
+    bonus_history = BonusRecord.query.filter_by(user_id=current_user.id) \
+        .order_by(BonusRecord.award_date.desc()).all()
+
+    return render_template('employee/my_profile.html', profile=profile,
+                           current_comp=current_comp, bonus_history=bonus_history)
 
 
 @employee_bp.route('/profile/edit', methods=['POST'])
@@ -457,9 +467,27 @@ def my_profile():
 def edit_profile():
     profile = EmployeeProfile.query.filter_by(user_id=current_user.id).first()
     if profile:
+        # Non-sensitive self-service fields only. employment_status,
+        # employment_type, and termination fields are admin-managed (see
+        # admin.edit_employee_profile) and intentionally not editable here.
         profile.phone = request.form.get('phone', '').strip() or profile.phone
         profile.emergency_contact_name = request.form.get('emergency_contact_name', '').strip() or profile.emergency_contact_name
         profile.emergency_contact_phone = request.form.get('emergency_contact_phone', '').strip() or profile.emergency_contact_phone
+        profile.address_line1 = request.form.get('address_line1', '').strip() or None
+        profile.address_line2 = request.form.get('address_line2', '').strip() or None
+        profile.city = request.form.get('city', '').strip() or None
+        profile.province_state = request.form.get('province_state', '').strip() or None
+        profile.postal_code = request.form.get('postal_code', '').strip() or None
+        profile.country = request.form.get('country', '').strip() or None
+
+        dob_str = request.form.get('date_of_birth', '').strip()
+        if dob_str:
+            try:
+                profile.date_of_birth = datetime.strptime(dob_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Invalid date of birth format.', 'error')
+                return redirect(url_for('employee.my_profile'))
+
         db.session.commit()
         flash('Profile updated.', 'success')
     return redirect(url_for('employee.my_profile'))

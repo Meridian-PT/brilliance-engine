@@ -1,0 +1,95 @@
+{% extends "dashboard_base.html" %}
+{% block title %}Employees — {{ app_name }}{% endblock %}
+
+{% block nav_items %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.dashboard') }}"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.dashboard') }}"><i class="bi bi-kanban"></i> Pipeline</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> Users</a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('admin.employees') }}"><i class="bi bi-person-badge"></i> Employees</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.salary_bands' %} active{% endif %}" href="{{ url_for('admin.salary_bands') }}"><i class="bi bi-bar-chart-steps"></i> Salary Bands</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'admin.audit_log' %} active{% endif %}" href="{{ url_for('admin.audit_log') }}"><i class="bi bi-clipboard-data"></i> Audit</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('manager.positions') }}"><i class="bi bi-briefcase"></i> Positions</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.documents') }}"><i class="bi bi-folder"></i> Documents</a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('admin.employee_reports') }}"><i class="bi bi-graph-up"></i> Employee Reports</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.index' %} active{% endif %}" href="{{ url_for('directory.index') }}"><i class="bi bi-person-lines-fill"></i> Directory</a></li>
+<li class="nav-item"><a class="nav-link{% if request.endpoint == 'directory.orgchart' %} active{% endif %}" href="{{ url_for('directory.orgchart') }}"><i class="bi bi-diagram-3"></i> Org Chart</a></li>
+{% endblock %}
+
+{% block content %}
+<div class="dash-header">
+    <div class="container-fluid px-4">
+        <h1>Employees</h1>
+        <p class="lead">{{ profiles|length }} employee record{{ 's' if profiles|length != 1 }} — system of record, compensation &amp; employment status</p>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <div class="content-card">
+        <div class="content-card-body">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Search</label>
+                    <input type="search" name="q" class="form-control" placeholder="Name, email, or department..." value="{{ search }}">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-be"><i class="bi bi-search"></i> Filter</button>
+                    {% if search %}
+                    <a href="{{ url_for('admin.employees') }}" class="btn btn-be-outline">Clear</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if profiles %}
+    <div class="content-card">
+        <div class="content-card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-be mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Title</th>
+                            <th>Department</th>
+                            <th>Manager</th>
+                            <th>Status</th>
+                            <th>Type</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for profile in profiles %}
+                        <tr>
+                            <td><strong>{{ profile.user.name }}</strong><div style="font-size: 0.8rem; color: var(--text-muted);">{{ profile.user.email }}</div></td>
+                            <td>{{ profile.title or '—' }}</td>
+                            <td>{{ profile.department or '—' }}</td>
+                            <td>{{ profile.manager.name if profile.manager else '—' }}</td>
+                            <td>
+                                {% set status = profile.employment_status or 'active' %}
+                                <span class="badge" style="text-transform: capitalize; background: {% if status == 'active' %}rgba(39,174,96,0.15); color: #2ecc71;{% elif status == 'on_leave' %}rgba(243,156,18,0.15); color: #f1c40f;{% elif status == 'terminated' %}rgba(231,76,60,0.15); color: #e74c3c;{% else %}rgba(142,68,173,0.15); color: #8e44ad;{% endif %}">
+                                    {{ status|replace('_', ' ') }}
+                                </span>
+                            </td>
+                            <td style="text-transform: capitalize;">{{ (profile.employment_type or '—')|replace('_', ' ') }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.employee_detail', user_id=profile.user_id) }}" class="btn btn-sm btn-be-outline" title="View / Edit">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="content-card">
+        <div class="content-card-body text-center py-4" style="color: var(--text-muted);">
+            <i class="bi bi-person-badge" style="font-size: 2rem;"></i>
+            <p class="mt-2 mb-0">No employee records found.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
