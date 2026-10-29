@@ -624,6 +624,34 @@ def _seed_employee_data(jared, mireille, admin, positions):
     db.session.commit()
 
 
+def _reconcile_schema():
+    """Add Phase 2 employee_profiles columns that create_all() cannot add to a
+    table that already exists (e.g. a Render Postgres predating Phase 2).
+    Idempotent and non-destructive; a no-op on a fresh DB where create_all()
+    already built the columns."""
+    from sqlalchemy import inspect as _inspect, text as _text
+    insp = _inspect(db.engine)
+    if 'employee_profiles' not in insp.get_table_names():
+        return
+    existing = {c['name'] for c in insp.get_columns('employee_profiles')}
+    coldefs = [
+        ('address_line1', 'VARCHAR(200)'), ('address_line2', 'VARCHAR(200)'),
+        ('city', 'VARCHAR(100)'), ('province_state', 'VARCHAR(100)'),
+        ('postal_code', 'VARCHAR(20)'), ('country', 'VARCHAR(100)'),
+        ('date_of_birth', 'DATE'), ('employment_status', 'VARCHAR(20)'),
+        ('employment_type', 'VARCHAR(20)'), ('termination_date', 'DATE'),
+        ('termination_reason', 'TEXT'),
+    ]
+    added = []
+    for name, ddl in coldefs:
+        if name not in existing:
+            db.session.execute(_text(f'ALTER TABLE employee_profiles ADD COLUMN {name} {ddl}'))
+            added.append(name)
+    if added:
+        db.session.commit()
+        print(f'[schema] reconciled employee_profiles columns: {added}', flush=True)
+
+
 with app.app_context():
     # ── Migration strategy (Phase 2, Alembic adopted 2026-10-28) ──
     # db.create_all() only CREATEs tables that don't exist yet; it never ALTERs
@@ -641,6 +669,7 @@ with app.app_context():
     # The dev SQLite DB (instance/brilliance.db) has already had `flask db
     # upgrade` run against it as part of this change, and is fully migrated.
     db.create_all()
+    _reconcile_schema()
     seed_database()
 
 
