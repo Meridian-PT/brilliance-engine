@@ -671,8 +671,9 @@ with app.app_context():
     db.create_all()
     _reconcile_schema()
     seed_database()
-    from app.pt_seed import seed_pt_team
+    from app.pt_seed import seed_pt_team, provision_admins
     seed_pt_team()
+    provision_admins()
 
 
 if __name__ == '__main__':

@@ -6,6 +6,8 @@ the Directory + Org Chart render the real company. Advisors are intentionally
 excluded (external, not staff). Runs at boot after the base seed; safe to run
 on every boot (writes only when a record is missing).
 """
+import os
+import json
 import secrets
 from datetime import date
 from werkzeug.security import generate_password_hash
@@ -156,3 +158,34 @@ def seed_pt_team():
     db.session.commit()
     if created_u or created_p:
         print(f"[pt_seed] created {created_u} users, {created_p} profiles", flush=True)
+
+
+def provision_admins():
+    """Grant admin + set a password for users listed in the PROVISION_ADMINS env
+    var (JSON: [{"email","password"}, ...]). Lets us hand out working admin logins
+    without putting passwords in the repo. Idempotent; a no-op if the var is unset.
+    Clear the env var once the people have changed their passwords."""
+    raw = os.environ.get("PROVISION_ADMINS")
+    if not raw:
+        return
+    try:
+        entries = json.loads(raw)
+    except (ValueError, TypeError):
+        print("[provision_admins] PROVISION_ADMINS is not valid JSON; skipping", flush=True)
+        return
+    done = 0
+    for e in entries:
+        email = (e.get("email") or "").strip()
+        pw = e.get("password")
+        if not email or not pw:
+            continue
+        u = User.query.filter((User.email.ilike(email))).first()
+        if u is None:
+            continue
+        u.role = "admin"
+        u.is_active_user = True
+        u.password_hash = generate_password_hash(pw)
+        done += 1
+    if done:
+        db.session.commit()
+        print(f"[provision_admins] provisioned {done} admin login(s)", flush=True)
