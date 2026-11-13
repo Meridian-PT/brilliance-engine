@@ -148,6 +148,25 @@
         <div class="col-lg-5">
             <div class="content-card">
                 <div class="content-card-header">
+                    <h3><i class="bi bi-key"></i> Account Access</h3>
+                </div>
+                <div class="content-card-body">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        {{ user.name }} logs in with <strong>{{ user.email }}</strong>. Use Invite to let them
+                        set their own password via a one-time, 7-day link.
+                    </p>
+                    <form method="POST" action="{{ url_for('admin.invite_employee', user_id=user.id) }}"
+                          onsubmit="return confirm('Send a password-setup invite to ' + {{ user.name|tojson }} + ' at ' + {{ user.email|tojson }} + '?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-be-outline w-100">
+                            <i class="bi bi-envelope-paper"></i> Send / Resend Invite
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="content-card-header">
                     <h3><i class="bi bi-cash-coin"></i> Compensation</h3>
                 </div>
                 <div class="content-card-body">

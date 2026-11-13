@@ -36,6 +36,10 @@
             <button type="submit" class="btn btn-be w-100 mb-3">Sign In</button>
         </form>
 
+        <div style="text-align: center; font-size: 0.85rem; margin-bottom: 0.5rem;">
+            <a href="{{ url_for('auth.forgot_password') }}" style="color: #8899aa;">Forgot your password?</a>
+        </div>
+
         {% if role in ('candidate', 'newhire') %}
         <div style="text-align: center; font-size: 0.9rem; color: #8899aa;">
             Don't have an account?

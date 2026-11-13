@@ -621,6 +621,76 @@ def edit_employee_profile(user_id):
     return redirect(url_for('admin.employee_detail', user_id=user_id))
 
 
+# ── Account Access: Invite / Resend (Phase 6) ────────────────────────────────
+
+@admin_bp.route('/employees/<int:user_id>/invite', methods=['POST'])
+@login_required
+@admin_required
+def invite_employee(user_id):
+    """Send (or resend) a one-time 'set your password' invite link to a
+    single employee. Safe to call repeatedly -- create_token() invalidates
+    any previous unused invite for this user first."""
+    from app.tokens import create_token
+    from app.mailer import send_invite_email, MailerNotConfigured
+
+    user = User.query.get_or_404(user_id)
+    record, raw_token = create_token(user, purpose='invite', created_by=current_user)
+    log_change(current_user, 'User', user.id, 'invite_sent', None, 'invite', action='create')
+    db.session.commit()
+
+    try:
+        send_invite_email(user, raw_token)
+        flash(f'Invite sent to {user.name} ({user.email}).', 'success')
+    except MailerNotConfigured:
+        flash('Mail is not configured on this deployment (MERIDIAN_GMAIL_EMAIL / '
+              'MERIDIAN_GMAIL_APP_PASSWORD missing). Invite token was created but not emailed.', 'error')
+    except Exception as e:
+        flash(f'Invite token created, but the email failed to send: {e}', 'error')
+
+    return redirect(request.referrer or url_for('admin.employee_detail', user_id=user_id))
+
+
+@admin_bp.route('/employees/invite-bulk', methods=['POST'])
+@login_required
+@admin_required
+def invite_employees_bulk():
+    """Send invites to every selected, active employee in one action.
+    Expects a list of `user_ids` form values (checkboxes on the Employees
+    page). Intentionally requires explicit selection -- no 'invite
+    everyone' implicit default -- so this can never silently blast the
+    whole company."""
+    from app.tokens import create_token
+    from app.mailer import send_invite_email, MailerNotConfigured
+
+    user_ids = request.form.getlist('user_ids', type=int)
+    if not user_ids:
+        flash('No employees selected — nothing was sent.', 'info')
+        return redirect(url_for('admin.employees'))
+
+    sent, failed = [], []
+    for uid in user_ids:
+        user = User.query.get(uid)
+        if not user or not user.is_active_user:
+            continue
+        record, raw_token = create_token(user, purpose='invite', created_by=current_user)
+        log_change(current_user, 'User', user.id, 'invite_sent', None, 'invite-bulk', action='create')
+        db.session.commit()
+        try:
+            send_invite_email(user, raw_token)
+            sent.append(user.name)
+        except MailerNotConfigured:
+            flash('Mail is not configured on this deployment — no invites were emailed.', 'error')
+            return redirect(url_for('admin.employees'))
+        except Exception:
+            failed.append(user.name)
+
+    if sent:
+        flash(f'Invites sent to {len(sent)}: {", ".join(sent)}.', 'success')
+    if failed:
+        flash(f'Failed to email {len(failed)}: {", ".join(failed)} (token created, retry later).', 'error')
+    return redirect(url_for('admin.employees'))
+
+
 # ── Compensation (SENSITIVE — admin-only write) ──────────────────────────────
 
 @admin_bp.route('/employees/<int:user_id>/compensation/add', methods=['POST'])

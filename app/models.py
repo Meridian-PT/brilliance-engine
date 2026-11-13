@@ -303,6 +303,7 @@ class EmployeeProfile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True)
     department = db.Column(db.String(100))
+    team = db.Column(db.String(150))  # sub-team within department, e.g. "Engineering — PureHomes"
     title = db.Column(db.String(150))
     start_date = db.Column(db.Date)
     manager_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -898,6 +899,43 @@ class TimeEntry(db.Model):
 
     def __repr__(self):
         return f'<TimeEntry user={self.user_id} {self.work_date} {self.hours}h status={self.status}>'
+
+
+# ── Account Access: Invite / Password Reset (Phase 6) ─────────────────────────
+
+class PasswordResetToken(db.Model):
+    """Single-use, time-limited token backing both the employee invite flow
+    ("set your own password") and standard forgot-password resets. The raw
+    token is only ever sent in the email link; we store a SHA-256 hash here
+    so a leaked DB row can't be used to assume any account (same reasoning
+    as not storing plaintext passwords).
+
+    `purpose` distinguishes 'invite' (first login, account already exists
+    with an unknown system-generated password) from 'reset' (forgot
+    password) — same mechanism, different email copy and expiry window.
+    """
+    __tablename__ = 'password_reset_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    token_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    purpose = db.Column(db.String(20), nullable=False, default='invite')  # invite, reset
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # admin who triggered it (invite), or None (self-serve reset)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    @property
+    def is_valid(self):
+        now = _naive_utc(datetime.now(timezone.utc))
+        expires = _naive_utc(self.expires_at)
+        return self.used_at is None and (expires is None or expires >= now)
+
+    def __repr__(self):
+        return f'<PasswordResetToken user={self.user_id} purpose={self.purpose} used={self.used_at is not None}>'
 
 
 def get_active_announcements_for(user, limit=5):
