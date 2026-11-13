@@ -33,10 +33,7 @@ def _credentials():
     return email, password
 
 
-def send_email(to_email, subject, html_body, text_body=None):
-    """Send one email. Raises MailerNotConfigured if credentials are missing,
-    or smtplib exceptions on send failure -- callers should catch and flash/log
-    rather than let a mail failure 500 an admin-facing request."""
+def _send_via_smtp(to_email, subject, html_body, text_body):
     sender_email, app_password = _credentials()
 
     msg = MIMEMultipart('alternative')
@@ -57,6 +54,48 @@ def send_email(to_email, subject, html_body, text_body=None):
         server.starttls()
         server.login(sender_email, app_password)
         server.sendmail(sender_email, [to_email], msg.as_string())
+
+
+def _send_via_agentmail(to_email, subject, html_body, text_body):
+    """Fallback transport: Render's web service network blocks outbound
+    SMTP (confirmed via live E2E test, Nov 13 2026 -- `[Errno 101] Network
+    is unreachable` connecting to smtp.gmail.com:587). AgentMail's send is
+    a plain HTTPS POST, unaffected by that egress restriction. Same
+    display name is set as the From header; the underlying address is the
+    PT AgentMail inbox rather than the Gmail account when this path is used."""
+    api_key = os.environ.get('AGENTMAIL_API_KEY')
+    inbox_id = os.environ.get('AGENTMAIL_INBOX_ID', 'meridian-pt@agentmail.to')
+    if not api_key:
+        raise MailerNotConfigured('Neither SMTP nor AgentMail (AGENTMAIL_API_KEY) is usable from this host.')
+
+    from agentmail import AgentMail
+    client = AgentMail(api_key=api_key)
+    client.inboxes.messages.send(
+        inbox_id,
+        to=to_email,
+        subject=subject,
+        html=html_body,
+        text=text_body,
+        headers={'From': formataddr((SENDER_DISPLAY_NAME, inbox_id))},
+    )
+
+
+def send_email(to_email, subject, html_body, text_body=None):
+    """Send one email, SMTP first (matches the originally-specified Gmail
+    sender), automatically falling back to AgentMail's HTTPS API only on a
+    network-level failure (not on auth/credential errors, which should
+    surface as-is). Raises MailerNotConfigured if neither transport is
+    usable; raises the underlying exception on a genuine send failure --
+    callers should catch and flash/log rather than let this 500 an
+    admin-facing request."""
+    try:
+        _send_via_smtp(to_email, subject, html_body, text_body)
+    except MailerNotConfigured:
+        _send_via_agentmail(to_email, subject, html_body, text_body)
+    except OSError:
+        # Network is unreachable / connection refused / timed out -- the
+        # egress-blocked case. Fall back rather than fail the request.
+        _send_via_agentmail(to_email, subject, html_body, text_body)
 
 
 def _app_base_url():
