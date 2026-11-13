@@ -1,6 +1,15 @@
 databases:
+  # NOTE (Nov 13, 2026 production hardening): the live DB was migrated off the
+  # original free Postgres (auto-expires after 30 days, which is what caused
+  # the Oct 2026 outage) to a paid `basic_256mb` instance named
+  # "brilliance-db-paid" (id dpg-dbrjkip5efls73aq68k0-a), created directly via
+  # the Render API rather than through this blueprint. This file is kept as
+  # documentation of intended shape; it is NOT actively synced as a live
+  # Render Blueprint against the real services (no blueprint linkage exists),
+  # so edits here don't auto-apply -- changes to the real services go through
+  # the dashboard or API.
   - name: brilliance-db
-    plan: free
+    plan: basic_256mb
     databaseName: brilliance
     user: brilliance
 
@@ -17,6 +26,26 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.12.0"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brilliance-db
+          property: connectionString
+
+  # Nightly PTO accrual job (Phase 5, Nov 13 2026). Deliberately runs
+  # `python3 -m app.accrual` instead of importing run.py, so it never
+  # triggers run.py's module-level db.create_all()/seed_database()/
+  # seed_pt_team()/provision_admins() side effects on every cron tick --
+  # see app/accrual.py module docstring. Idempotent: safe to re-run or
+  # trigger manually without double-crediting PTO balances.
+  - type: cron
+    name: brilliance-pto-accrual
+    runtime: python
+    schedule: "0 7 * * *"  # nightly, 07:00 UTC
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 -m app.accrual
+    envVars:
+      - key: FLASK_CONFIG
+        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: brilliance-db
