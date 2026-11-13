@@ -744,6 +744,33 @@ class AccrualPolicy(db.Model):
         return f'<AccrualPolicy {self.name} {self.rate_per_period}/{self.period}>'
 
 
+class AccrualRun(db.Model):
+    """One idempotency receipt for a single (policy, employee, period) accrual.
+
+    `period_key` identifies the period this credit belongs to (e.g. '2026-11'
+    for a monthly policy, '2026' for annual, 'pay-57' for per_pay) -- see
+    app/accrual.py:_period_key(). The unique constraint is the actual
+    correctness guarantee for "never double-accrue on re-run": the nightly
+    job attempts an INSERT per (policy, employee, period) and relies on the
+    DB rejecting a duplicate, not on any date-math check in application code.
+    """
+    __tablename__ = 'accrual_runs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    policy_id = db.Column(db.Integer, db.ForeignKey('accrual_policies.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    period_key = db.Column(db.String(20), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    run_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint('policy_id', 'user_id', 'period_key', name='uq_accrual_run_policy_user_period'),
+    )
+
+    def __repr__(self):
+        return f'<AccrualRun policy={self.policy_id} user={self.user_id} period={self.period_key} +{self.amount}>'
+
+
 # Leave types that are statutory/categorical rather than drawn from the standard
 # vacation/sick/personal PTOBalance pools. PTORequest.leave_type already accepts
 # any string (see models.py PTORequest comment), so no schema change is needed —

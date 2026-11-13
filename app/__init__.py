@@ -61,4 +61,7 @@ def create_app(config_name='default'):
             'company_name': 'Pure Technology',
         }
 
+    from app.accrual import register_cli
+    register_cli(app)
+
     return app
