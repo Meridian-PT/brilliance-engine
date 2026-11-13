@@ -48,7 +48,12 @@ def send_email(to_email, subject, html_body, text_body=None):
         msg.attach(MIMEText(text_body, 'plain'))
     msg.attach(MIMEText(html_body, 'html'))
 
-    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+    # Explicit timeout: without one, a blocked/filtered outbound SMTP port
+    # (common on PaaS hosts) causes smtplib to hang until the OS TCP
+    # timeout, which is longer than gunicorn's worker timeout -- the worker
+    # gets SIGKILLed mid-request (a bare 500, no clean exception) instead of
+    # this raising a catchable socket.timeout. Fail fast and loud instead.
+    with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as server:
         server.starttls()
         server.login(sender_email, app_password)
         server.sendmail(sender_email, [to_email], msg.as_string())
